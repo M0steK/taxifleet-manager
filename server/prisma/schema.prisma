@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role{
+  admin 
+  driver
+}
+
+model User{
+  id String @id @default(uuid())
+  firstName String @map("first_name")
+  lastName String @map("last_name")
+  email String @unique
+  passwordHash String @map("password_hash")
+  phoneNumber String? @map("phone_number")
+  role Role @default(driver)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schedules Schedule[]
+  pickupLocations PickupLocation[]
+}
+
+enum VehicleStatus{
+  active
+  inactive
+  in_service
+}
+
+model Vehicle{
+  id String @id @default(uuid())
+  make String 
+  model String
+  productionYear Int @map("production_year")
+  licensePlate String @unique @map("license_plate")
+  vin String @unique
+  status VehicleStatus @default(active)
+  mileage Int
+  insuranceExpiry DateTime @map("insurance_expiry")
+  nextInspectionDate DateTime @map("next_inspection_date")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  schedules Schedule[]
+}
+
+model Schedule{
+  id String @id @default(uuid())
+  userId String @map("user_id")
+  vehicleId String @map("vehicle_id")
+  startTime DateTime @map("start_time")
+  endTime DateTime @map("end_time")
+  notes String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+}
+
+model PickupLocation{
+  id String @id @default(uuid())
+  userId String @map("user_id")
+  latitude Float
+  longitude Float
+  pickupTimestamp DateTime @map("pickup_timestamp")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+}
