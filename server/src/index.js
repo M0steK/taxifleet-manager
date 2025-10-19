@@ -14,6 +14,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'UP', message: 'Server is running' });
 });
 
+// ----------------- User Endpoints ---------------- //
 app.post('/api/users', async (req, res) =>{
   try{
     const {firstName, lastName, email, password, phoneNumber, role} = req.body;
@@ -141,6 +142,8 @@ app.delete('/api/users/:id', async (req, res) =>{
   }
 })
 
+// ----------------- Vehicle Endpoints ---------------- //
+
 app.post('/api/vehicles', async (req, res) => {
   try{
     const {brand, model, productionYear, licensePlate, vin, status, mileage, insuranceExpiry, nextInspectionDate} = req.body;
@@ -249,9 +252,160 @@ app.delete('/api/vehicles/:id', async (req, res) =>{
     res.status(204).send();
     
   }catch(error){
-
+    if(error.code === 'P2025'){
+      return res.status(404).json({error: 'Vehicle not found'});
+    }
+    console.error(`Error deleting vehicle with id: ${req.params.id}`, error);
+    res.status(500).json({error: 'Internal server error'});
   }
 })
+
+// ---------------------- schedules ---------------------------- //
+
+app.post('/api/schedules', async(req, res) =>{
+  try{
+    const {userId, vehicleId, startTime, endTime, notes} = req.body;
+
+    if(!userId || !vehicleId || !startTime || !endTime){
+      return res.status(400).json({error: "Missing required fields"});
+    }
+
+    const newSchedule = await prisma.schedule.create({
+      data:{
+        userId,
+        vehicleId,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        notes,
+      },
+    });
+
+    res.status(201).json(newSchedule);
+  } catch(error){
+    console.error('Error creating schedule:', error);
+    if(error.code === 'P2003'){
+      return res.status(404).json({error: "The specified user or vehicle does not exist"});
+    }
+    res.status(500).json({error: "Internal server error"});
+  }
+});
+
+app.get('/api/schedules', async (req,res) =>{
+  try{
+    const schedules = await prisma.schedule.findMany({
+      orderBy:{
+        createdAt: 'desc',
+      },
+      include:{
+        user:{
+          select:{
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        vehicle:{
+          select:{
+            id: true,
+            brand: true,
+            model: true,
+            licensePlate: true,
+          },
+        },
+      },
+    });
+    res.status(200).json(schedules);
+  }
+  catch(error){
+    console.error('Error fetching schedules:', error);
+    res.status(500).json({error: "Internal server error"});
+  }
+});
+
+app.get('/api/schedules/:id', async (req, res) =>{
+  try{
+    const {id} = req.params;
+
+    const schedule = await prisma.schedule.findUnique({
+      where:{
+        id: id,
+      },
+      include:{
+        user:{
+          select:{
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        vehicle:{
+          select:{
+            id: true,
+            brand: true,
+            model: true,
+            licensePlate: true,
+          },
+        },
+      },
+    });
+
+    if(!schedule){
+      return res.status(404).json({error: 'Schedule not found'});
+    }
+
+    res.status(200).json(schedule);
+  }
+  catch(error){
+    console.error(`Error fetching schedule with id: ${req.params.id}`, error);
+    res.status(500).json({error: 'Internal server error'});
+  }
+});
+
+app.patch('/api/schedules/:id', async (req, res) =>{
+  try{
+    const {id} = req.params;
+    const {startTime, endTime, notes} = req.body;
+
+    const updatedSchedule = await prisma.schedule.update({
+      where:{
+        id: id,
+      },
+      data:{
+        startTime: startTime ? new Date(startTime) : undefined,
+        endTime: endTime ? new Date(endTime) : undefined,
+        notes,
+      },
+    });
+    
+    res.status(200).json(updatedSchedule);
+  }
+  catch(error){
+    if(error.code === 'P2025'){
+      return res.status(404).json({error: 'Schedule not found'});
+    }
+    console.error(`Error updating schedule with id: ${req.params.id}`, error);
+    res.status(500).json({error: 'Internal server error'});
+
+  }
+});
+
+app.delete('/api/schedules/:id', async (req, res) =>{
+  try{
+    const {id} = req.params;
+    await prisma.schedule.delete({
+      where:{
+        id: id,
+      },
+    });
+    res.status(204).send();
+  }catch(error){
+    if(error.code === 'P2025'){
+      return res.status(404).json({error: 'Schedule not found'});
+    }
+    console.error(`Error deleting schedule with id: ${req.params.id}`, error);
+    res.status(500).json({error: 'Internal server error'});
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server listening on port http://localhost:${PORT}`);
 });
