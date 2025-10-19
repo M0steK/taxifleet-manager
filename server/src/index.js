@@ -48,6 +48,99 @@ app.post('/api/users', async (req, res) =>{
   }
 });
 
+app.get('/api/users', async (req, res) =>{
+  try{
+    const users = await prisma.user.findMany({
+      orderBy:{
+        createdAt: 'desc',
+      },
+    });
+    users.forEach(user => delete user.passwordHash);
+    res.status(200).json(users);
+  }
+  catch(error){
+    console.error('Error fetching users:',error);
+    res.status(500).json({error: "Internal server error"});
+  }
+})
+
+app.get('/api/users/:id', async (req, res) =>{
+  try{
+    const {id} = req.params;
+
+    const user = await prisma.user.findUnique({
+      where:{
+        id: id,
+      },
+    });
+
+    if(!user){
+      return res.status(404).json({error: 'User not found'});
+    }
+
+    delete user.passwordHash;
+
+    res.status(200).json(user);
+  }
+  catch(error){
+    console.error(`Error fetching user with id: ${req.params.id}`, error);
+    res.status(500).json({error: 'Internal server error'});
+    }
+})
+
+app.patch('/api/users/:id', async (req, res) => {
+  try{
+    const {id} = req.params;
+    const {firstName, lastName, phoneNumber, role} = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where:{
+        id: id,
+      },
+
+      data:{
+        firstName,
+        lastName,
+        phoneNumber,
+        role,
+      },
+    });
+
+    if(!updatedUser){
+      return res.status(404).json({error: 'User not found'});
+    }
+    delete updatedUser.passwordHash;
+
+    res.status(200).json(updatedUser);
+  }
+  catch(error){
+    console.error(`Error updating user with id: ${req.params.id}`, error);
+    res.status(500).json({error: 'Internal server error'});
+
+  }
+})
+
+app.delete('/api/users/:id', async (req, res) =>{
+  try{
+    const {id} = req.params;
+
+    await prisma.user.delete({
+      where:{
+        id: id,
+      },
+    });
+
+    res.status(204).send();
+  }
+  catch(error){
+    if(error.code === 'P2025'){
+      return res.status(404).json({error: 'User not found'});
+    }
+    console.error(`Error deleting user with id: ${req.params.id}`, error);
+    res.status(500).json({error: 'Internal server error'});
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`Server listening on port http://localhost:${PORT}`);
 });
