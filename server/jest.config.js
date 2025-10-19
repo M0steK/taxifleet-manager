@@ -1,7 +1,7 @@
-export default{
-    testEnvironment: 'node',
+export default {
+  testEnvironment: 'node',
 
-    testPathIgnorePatterns:['/node_modules/'],
+  testPathIgnorePatterns: ['/node_modules/'],
 
-    clearMocks: true,
+  clearMocks: true,
 };
