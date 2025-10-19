@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma
 
-RUN npm install --only=production
+RUN npm install 
 
 COPY src ./src
 
