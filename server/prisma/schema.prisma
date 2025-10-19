@@ -41,7 +41,7 @@ enum VehicleStatus{
 
 model Vehicle{
   id String @id @default(uuid())
-  make String 
+  brand String 
   model String
   productionYear Int @map("production_year")
   licensePlate String @unique @map("license_plate")

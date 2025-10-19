@@ -22,7 +22,7 @@ CREATE TABLE "User" (
 -- CreateTable
 CREATE TABLE "Vehicle" (
     "id" TEXT NOT NULL,
-    "make" TEXT NOT NULL,
+    "brand" TEXT NOT NULL,
     "model" TEXT NOT NULL,
     "production_year" INTEGER NOT NULL,
     "license_plate" TEXT NOT NULL,
