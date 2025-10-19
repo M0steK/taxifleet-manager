@@ -1,5 +1,5 @@
 export default{
-    testEnviroment: 'node',
+    testEnvironment: 'node',
 
     testPathIgnorePatterns:['/node_modules/'],
 

@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     
     services:
-      postrgres:
+      postgres:
         image: postgres:15-alpine
         env:
           POSTGRES_USER: user 
@@ -29,28 +29,28 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      defaults:
-        run:
-          working-directory: ./server
+    defaults:
+      run:
+        working-directory: ./server
 
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        - name: Set up Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: '18'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-        - name: Install dependencies
-          run: npm install
+      - name: Install dependencies
+        run: npm install
 
-        - name: apply database migrations
-          env:
-            DATABASE_URL: postgresql://user:password@localhost:5432/testdb
-          run: npx prisma migrate deploy
+      - name: apply database migrations
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/testdb
+        run: npx prisma migrate deploy
 
-        - name: Run tests
-          env:
-            DATABASE_URL: postgresql://user:password@localhost:5432/testdb
-          run: npm run test
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/testdb
+        run: npm run test

@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "test" : "NODE_OPTIONS=--experimental-vm-modules jest",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
+    "test" : "NODE_OPTIONS=--experimental-vm-modules jest",
     "postinstall": "prisma generate"
   },
   "keywords": [],
