@@ -406,6 +406,60 @@ app.delete('/api/schedules/:id', async (req, res) =>{
     res.status(500).json({error: 'Internal server error'});
   }
 });
+
+// ---------------------- Pickup Locations ---------------------------- //
+
+app.post('/api/pickups', async (req, res) =>{
+  try{
+    const{userId, latitude, longitude, pickupTimestamp} = req.body;
+
+    if(!userId || !latitude || !longitude){
+      return res.status(400).json({error: "Missing required fields"});
+    }
+
+    const newPickup = await prisma.pickupLocation.create({
+      data:{
+        userId,
+        latitude,
+        longitude,
+        pickupTimestamp: pickupTimestamp ? new Date(pickupTimestamp) : new Date(),
+      },
+    });
+      
+    res.status(201).json(newPickup);
+
+  }catch(error){
+    console.error('Error creating pickup:', error);
+    if(error.code === 'P2003'){
+      return res.status(404).json({error: "The specified user does not exist"});
+    }
+    res.status(500).json({error: "Internal server error"});
+  }
+});
+
+app.get('/api/pickups', async (req, res) =>{
+  try{
+const pickups = await prisma.pickupLocation.findMany({
+      orderBy:{
+        pickupTimestamp: 'desc',
+      },
+      include:{
+        user: {
+          select:{
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+    res.status(200).json(pickups);
+    
+  }catch(error){
+    console.error('Error fetching pickups:', error);
+    res.status(500).json({error: "Internal server error"});
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server listening on port http://localhost:${PORT}`);
 });
