@@ -1,0 +1,56 @@
+name: Run API Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: API Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postrgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: user 
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+
+        optionss: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      defaults:
+        run:
+          working-directory: ./server
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '18'
+
+        - name: Install dependencies
+          run: npm install
+
+        - name: apply database migrations
+          env:
+            DATABASE_URL: postgresql://user:password@localhost:5432/testdb
+          run: npx prisma migrate deploy
+
+        - name: Run tests
+          env:
+            DATABASE_URL: postgresql://user:password@localhost:5432/testdb
+          run: npm run test

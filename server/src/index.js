@@ -480,6 +480,10 @@ app.get('/api/pickups', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port http://localhost:${PORT}`);
-});
+export default app;
+
+if(process.env.NODE_ENV !== 'test'){
+  app.listen(PORT, () => {
+    console.log(`Server listening on port http://localhost:${PORT}`);
+  });
+}
