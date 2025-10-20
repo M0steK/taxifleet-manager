@@ -185,11 +185,12 @@ app.post('/api/vehicles', async (req, res) => {
     console.error('Error creating vehicle:', error);
     if (
       error.code === 'P2002' &&
-      error.meta?.target?.includes('licensePlate')
+      (error.meta?.target?.includes('license_plate') ||
+        error.meta?.target?.includes('vin'))
     ) {
-      return res
-        .status(409)
-        .json({ error: 'Vehicle with this license plate already exists' });
+      return res.status(409).json({
+        error: 'Vehicle with this license plate or vin already exists',
+      });
     }
     res.status(500).json({ error: 'Internal server error' });
   }
