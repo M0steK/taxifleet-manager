@@ -317,7 +317,7 @@ app.get('/api/schedules', async (req, res) => {
   try {
     const schedules = await prisma.schedule.findMany({
       orderBy: {
-        createdAt: 'desc',
+        startTime: 'desc',
       },
       include: {
         user: {
@@ -477,6 +477,36 @@ app.get('/api/pickups', async (req, res) => {
     res.status(200).json(pickups);
   } catch (error) {
     console.error('Error fetching pickups:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    const isPasswordValid = user
+      ? await bcrypt.compare(password, user.passwordHash)
+      : false;
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    delete user.passwordHash;
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Error during login:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

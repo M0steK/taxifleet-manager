@@ -44,9 +44,9 @@ describe('Schedule API endpoints', () => {
 
   afterAll(async () => {
     await prisma.pickupLocation.deleteMany({});
+    await prisma.schedule.deleteMany({});
     await prisma.vehicle.deleteMany({});
     await prisma.user.deleteMany({});
-    await prisma.schedule.deleteMany({});
     await prisma.$disconnect();
   });
 
