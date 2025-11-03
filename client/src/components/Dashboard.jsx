@@ -43,6 +43,10 @@ const handleManageFleetClick = () => {
   navigateTo('vehicleManagment');
 };
 
+const handleManageUsersClick = () => {
+  navigateTo('userManagment');
+};
+
 return (
   <div>
     <header>
@@ -52,6 +56,7 @@ return (
       <div>
         <p>ADMINNNNNNNNNNNNNN</p> 
         <button onClick={handleManageFleetClick}>Fleet Managment</button>
+        <button onClick={handleManageUsersClick}>Users Managment</button>
       </div>)}
         <button onClick={onLogout}>Wyloguj</button>
       

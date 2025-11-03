@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import VehicleManagment from './components/VehicleManagment'
+import UserManagement from './components/UserManagment';
 
 function App() {
 
@@ -37,7 +38,12 @@ function App() {
       {currentPage ==='vehicleManagment' && (
         <VehicleManagment navigateBack={() => navigateTo('dashboard')}/>
       )}
+      
+      {currentPage === 'userManagment' && (
+        <UserManagement navigateBack={() => navigateTo('dashboard')} />
+      )}
     </div>
+    
   );
 }
 

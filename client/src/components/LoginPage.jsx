@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
 
 function LoginPage({ onLoginSuccess }) {
-  // Stan do przechowywania danych z formularza
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Stan do przechowywania komunikatu o błędzie
   const [error, setError] = useState(null);
 
   const handleSubmit = async (event) => {
-    event.preventDefault(); // Zapobiegaj domyślnemu przeładowaniu strony
-    setError(null); // Zresetuj błędy przy każdej próbie logowania
+    event.preventDefault(); 
+    setError(null);
 
     try {
-      // Wyślij zapytanie POST do naszego endpointu logowania
-      // Dzięki proxy, Vite przekaże to zapytanie do http://localhost:3001/api/auth/login
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -25,14 +21,11 @@ function LoginPage({ onLoginSuccess }) {
       const data = await response.json();
 
       if (!response.ok) {
-        // Jeśli serwer odpowiedział błędem (np. 401), rzuć błąd z komunikatem
         throw new Error(data.error || 'Logowanie nie powiodło się');
       }
 
-      // Jeśli logowanie się powiodło, wywołaj funkcję z komponentu nadrzędnego (App.jsx)
       onLoginSuccess(data);
     } catch (err) {
-      // Złap błąd (zarówno z sieci, jak i z serwera) i ustaw komunikat
       setError(err.message);
     }
   };
@@ -44,7 +37,6 @@ function LoginPage({ onLoginSuccess }) {
           Witaj w TaxiFleet!
         </h2>
         <form onSubmit={handleSubmit}>
-          {/* Wyświetl komunikat o błędzie, jeśli istnieje */}
           {error && (
             <div className="p-3 mb-4 text-center text-red-400 rounded-md bg-red-900/50">
               {error}

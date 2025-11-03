@@ -2,7 +2,13 @@ import request from 'supertest';
 import app from './index.js';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+});
 
 describe('API User endpoints', () => {
   beforeEach(async () => {

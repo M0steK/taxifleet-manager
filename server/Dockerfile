@@ -10,6 +10,9 @@ COPY prisma ./prisma
 RUN npm install 
 
 COPY src ./src
+COPY jest.config.js ./
+COPY jest.setup.js ./
+COPY .env.test ./
 
 USER node
 CMD [ "node", "src/index.js" ]
