@@ -34,7 +34,7 @@ app.post('/api/users', async (req, res) => {
         role: role,
       },
     });
-
+//
     delete newUser.passwordHash;
 
     res.status(201).json(newUser);
