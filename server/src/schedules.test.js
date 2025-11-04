@@ -14,10 +14,11 @@ describe('Schedule API endpoints', () => {
   let testUser, testVehicle;
 
   beforeAll(async () => {
+
+    await prisma.schedule.deleteMany({});
     await prisma.pickupLocation.deleteMany({});
     await prisma.vehicle.deleteMany({});
     await prisma.user.deleteMany({});
-    await prisma.schedule.deleteMany({});
 
     testUser = await prisma.user.create({
       data: {
