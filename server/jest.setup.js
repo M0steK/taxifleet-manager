@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
 
-const result = dotenv.config({ path: './.env.test' });
+const result = dotenv.config({
+  path: './.env.test',
+  override: true,
+});
 
 if (result.error) {
   console.error(
@@ -9,8 +12,6 @@ if (result.error) {
   );
   process.exit(1);
 }
-
-process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 console.log('--- jest.setup.js loaded ---');
 console.log('Using DATABASE_URL:', process.env.DATABASE_URL);
