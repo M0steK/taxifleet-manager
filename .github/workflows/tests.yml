@@ -55,4 +55,5 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://user:password@localhost:5432/testdb
-        run: npm run test
+          NODE_OPTIONS: ""   
+        run: npm test -- --runInBand
