@@ -17,3 +17,4 @@ console.log('--- jest.setup.js loaded ---');
 console.log('Using DATABASE_URL:', process.env.DATABASE_URL);
 
 process.env.NODE_ENV = 'test';
+//888
