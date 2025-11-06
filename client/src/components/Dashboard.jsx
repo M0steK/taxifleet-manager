@@ -28,7 +28,7 @@ function Dashboard({user, onLogout,navigateTo}){
     };
 
   fetchSchedules();
-}, [] );
+}, [error] );
 
 if(loading){
   return <p>Ładowanie grafiku...</p>
