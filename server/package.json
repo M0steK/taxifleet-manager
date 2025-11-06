@@ -8,7 +8,7 @@
     "start": "node src/index.js",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
-    "test": "jest --runInBand",
+    "test": "dotenv -e .env.test -- npx prisma migrate deploy && NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "postinstall": "prisma generate"
   },
   "keywords": [],

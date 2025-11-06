@@ -3,6 +3,7 @@ import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import VehicleManagment from './components/VehicleManagment'
 import UserManagement from './components/UserManagment';
+import DriverMap from './components/DriverMap';
 
 function App() {
 
@@ -42,6 +43,13 @@ function App() {
       {currentPage === 'userManagment' && (
         <UserManagement navigateBack={() => navigateTo('dashboard')} />
       )}
+      {currentPage === 'driverMap' && (
+        <DriverMap
+        user={user}
+        navigateBack={() => navigateTo('dashboard')}
+      />
+      )}
+      
     </div>
     
   );

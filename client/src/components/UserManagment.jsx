@@ -240,7 +240,7 @@ function AddUserForm({ onUserAdded, onCancel }) {
     email: '',
     phoneNumber: '',
     password: '',
-    role: '',
+    role: 'driver',
   });
 
   const [error, setError] = useState(null);

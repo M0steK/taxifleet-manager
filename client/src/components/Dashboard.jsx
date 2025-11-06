@@ -47,6 +47,10 @@ const handleManageUsersClick = () => {
   navigateTo('userManagment');
 };
 
+const handleOpenMapClick = () => {
+    navigateTo('driverMap');
+  };
+
 return (
   <div>
     <header>
@@ -58,6 +62,14 @@ return (
         <button onClick={handleManageFleetClick}>Fleet Managment</button>
         <button onClick={handleManageUsersClick}>Users Managment</button>
       </div>)}
+      {user?.role === 'driver' && (
+      <button
+              onClick={handleOpenMapClick}
+              className="rounded-md bg-green-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+            >
+              Otwórz Mapę
+            </button>
+      )}
         <button onClick={onLogout}>Wyloguj</button>
       
     </header>
