@@ -1,6 +1,6 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-
+import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
 
 function ChangeMapView({center}) {
     const map = useMap();
@@ -13,6 +13,26 @@ function DriverMap({ user, navigateBack }) {
     const [currentPosition, setCurrentPosition] = useState(null);
     const [message, setMessage] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    const [pickupData, setPickupData] = useState([]);
+
+    useEffect(() => {
+      const fetchPickupData = async () => {
+        try{
+          const response = await fetch('/api/pickups');
+
+          if(!response.ok){
+            throw new Error('Blad podczas pobierania danych o odbiorach');
+          }
+
+          const data = await response.json();
+          setPickupData(data);
+        }catch(err){
+          setMessage({type: 'error', text: err.message});
+        }
+      };
+      fetchPickupData();
+    }, []);
 
     const handleLogPickup = () => {
         setIsLoading(true);
@@ -41,6 +61,9 @@ function DriverMap({ user, navigateBack }) {
                 throw new Error(data.errror || 'Nie udalo sie pobrać lokalizacji');
               }
 
+              const newPickupPoint = await response.json();
+
+              setPickupData(currentPickups => [...currentPickups, newPickupPoint]);
               setMessage({
                 type: 'success',
                 text: 'Pomyślnie dokonano odbioru!',
@@ -109,6 +132,19 @@ function DriverMap({ user, navigateBack }) {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+
+          {pickupData.length > 0 && (
+            <HeatmapLayer
+              points={pickupData}
+              longitudeExtractor={(point) => point.longitude}
+              latitudeExtractor={(point) => point.latitude}
+              intensityExtractor={() => 1}
+              radius={20}
+              blur={15}
+              maxZoom={18}
+            />
+          )}
+
             {currentPosition &&(
             <Marker position={currentPosition}>
               <Popup>Twoja lokalizacja</Popup>

@@ -4,6 +4,11 @@ import Dashboard from './components/Dashboard';
 import VehicleManagment from './components/VehicleManagment'
 import UserManagement from './components/UserManagment';
 import DriverMap from './components/DriverMap';
+import ScheduleManagement from './components/ScheduleManagement';
+
+const featureFlags = {
+  enableScheduleManagement: true,
+}
 
 function App() {
 
@@ -33,7 +38,7 @@ function App() {
       )}
 
       {currentPage === 'dashboard' && (
-        <Dashboard user={user} onLogout={handleLogout} navigateTo={NavigateFromDashboard}/>
+        <Dashboard user={user} onLogout={handleLogout} navigateTo={NavigateFromDashboard} featureFlags={featureFlags}/>
       )}
 
       {currentPage ==='vehicleManagment' && (
@@ -43,6 +48,8 @@ function App() {
       {currentPage === 'userManagment' && (
         <UserManagement navigateBack={() => navigateTo('dashboard')} />
       )}
+
+      
       {currentPage === 'driverMap' && (
         <DriverMap
         user={user}
