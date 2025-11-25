@@ -408,7 +408,9 @@ app.patch('/api/schedules/:id', async (req, res) => {
       return res.status(404).json({ error: 'Schedule not found' });
     }
     if (error.code === 'P2003') {
-      return res.status(404).json({ error: 'The specified user or vehicle does not exist' });
+      return res
+        .status(404)
+        .json({ error: 'The specified user or vehicle does not exist' });
     }
     console.error(`Error updating schedule with id: ${req.params.id}`, error);
     res.status(500).json({ error: 'Internal server error' });
