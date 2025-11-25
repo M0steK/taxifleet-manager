@@ -90,7 +90,7 @@ app.get('/api/users/:id', async (req, res) => {
 app.patch('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, phoneNumber, role } = req.body;
+    const { firstName, lastName, email, phoneNumber, role } = req.body;
 
     const updatedUser = await prisma.user.update({
       where: {
@@ -100,6 +100,7 @@ app.patch('/api/users/:id', async (req, res) => {
       data: {
         firstName,
         lastName,
+        email,
         phoneNumber,
         role,
       },
@@ -325,6 +326,7 @@ app.get('/api/schedules', async (req, res) => {
             id: true,
             firstName: true,
             lastName: true,
+            email: true,
           },
         },
         vehicle: {
@@ -385,23 +387,28 @@ app.get('/api/schedules/:id', async (req, res) => {
 app.patch('/api/schedules/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { startTime, endTime, notes } = req.body;
+    const { startTime, endTime, notes, userId, vehicleId } = req.body;
+
+    const data = {
+      startTime: startTime ? new Date(startTime) : undefined,
+      endTime: endTime ? new Date(endTime) : undefined,
+      notes,
+      userId: userId || undefined,
+      vehicleId: vehicleId || undefined,
+    };
 
     const updatedSchedule = await prisma.schedule.update({
-      where: {
-        id: id,
-      },
-      data: {
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime: endTime ? new Date(endTime) : undefined,
-        notes,
-      },
+      where: { id: id },
+      data,
     });
 
     res.status(200).json(updatedSchedule);
   } catch (error) {
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Schedule not found' });
+    }
+    if (error.code === 'P2003') {
+      return res.status(404).json({ error: 'The specified user or vehicle does not exist' });
     }
     console.error(`Error updating schedule with id: ${req.params.id}`, error);
     res.status(500).json({ error: 'Internal server error' });
