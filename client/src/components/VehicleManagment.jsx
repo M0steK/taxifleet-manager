@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import Header from './Header';
+import { FaTaxi, FaPlus, FaEdit } from 'react-icons/fa';
 
 /* ------------------------------- Main -----------------------------*/
-function VehicleManagment({ navigateBack }) {
+function VehicleManagment({ user, onLogout, navigateTo }) {
   const [vehicles, setVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,6 +15,39 @@ function VehicleManagment({ navigateBack }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editError, setEditError] = useState(null);
 
+  const checkAndUpdateExpiredVehicles = async (vehiclesData) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const expiredVehicles = vehiclesData.filter(vehicle => {
+      if (vehicle.status === 'inactive' || vehicle.status === 'in_service') return false;
+      
+      const insuranceExpiry = vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry) : null;
+      const inspectionDate = vehicle.nextInspectionDate ? new Date(vehicle.nextInspectionDate) : null;
+      
+      const insuranceExpired = insuranceExpiry && insuranceExpiry < today;
+      const inspectionExpired = inspectionDate && inspectionDate < today;
+      
+      return insuranceExpired || inspectionExpired;
+    });
+
+    for (const vehicle of expiredVehicles) {
+      try {
+        await fetch(`/api/vehicles/${vehicle.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'inactive' }),
+        });
+      } catch (err) {
+        console.error(`Nie udało się zaktualizować pojazdu ${vehicle.id}:`, err);
+      }
+    }
+
+    return expiredVehicles.length > 0;
+  };
+
   const fetchVehicles = async () => {
     setIsLoading(true);
     setError(null);
@@ -23,7 +58,16 @@ function VehicleManagment({ navigateBack }) {
       }
 
       const data = await response.json();
-      setVehicles(data);
+      
+      const hasExpired = await checkAndUpdateExpiredVehicles(data);
+      
+      if (hasExpired) {
+        const refreshResponse = await fetch('/api/vehicles');
+        const refreshedData = await refreshResponse.json();
+        setVehicles(refreshedData);
+      } else {
+        setVehicles(data);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -34,6 +78,21 @@ function VehicleManagment({ navigateBack }) {
   useEffect(() => {
     fetchVehicles();
   }, []);
+
+  // deeplink z dashboardu
+  useEffect(() => {
+    const idStr = sessionStorage.getItem('vehicleEditId');
+    if (!idStr) return;
+    const targetId = isNaN(Number(idStr)) ? idStr : Number(idStr);
+    const tryOpen = () => {
+      const found = vehicles.find((v) => String(v.id) === String(targetId));
+      if (found) {
+        setEditingVehicle(found);
+        sessionStorage.removeItem('vehicleEditId');
+      }
+    };
+    tryOpen();
+  }, [vehicles]);
 
   const handleVehicleAdded = () => {
     fetchVehicles();
@@ -146,44 +205,62 @@ function VehicleManagment({ navigateBack }) {
   };
 
   const formatStatus = (status) => {
-    if (!status) return '-';
-    return status
-      .toString()
-      .replace(/_/g, ' ')
-      .split(' ')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
+    const statusMap = {
+      'active': 'Aktywny',
+      'inactive': 'Nieaktywny',
+      'in_service': 'W serwisie'
+    };
+    return statusMap[status] || status || '-';
   };
 
   const renderTableContent = () => {
     if (isLoading) {
-      return <p>Ładowanie pojazdów...</p>;
+      return (
+        <tr>
+          <td colSpan="10" className="p-3 text-center text-slate-300">
+            Ładowanie pojazdów...
+          </td>
+        </tr>
+      );
     }
     if (error) {
-      return <p> Błąd {error}</p>;
+      return (
+        <tr>
+          <td colSpan="10" className="p-3 text-center text-red-400">
+            Błąd: {error}
+          </td>
+        </tr>
+      );
     }
     if (vehicles.length === 0) {
-      return <p>Brak pojazdów do wyświetlenia</p>;
+      return (
+        <tr>
+          <td colSpan="10" className="p-3 text-center text-slate-300">
+            Brak pojazdów do wyświetlenia
+          </td>
+        </tr>
+      );
     }
 
     return vehicles.map((vehicle) => (
-      <tr key={vehicle.id} className={getRowWarningClass(vehicle)}>
-        <td className="p-3 text-center">{vehicle.brand}</td>
-        <td className="text-center">{vehicle.model}</td>
-        <td className="text-center">{vehicle.licensePlate}</td>
-        <td className="text-center">{vehicle.productionYear}</td>
-        <td className={`text-center ${getStatusClass(vehicle?.status)}`}>
+      <tr key={vehicle.id} className={`${getRowWarningClass(vehicle)} hover:bg-slate-700/20 transition-colors`}>
+        <td className="p-3 text-center text-slate-200">{vehicle.brand}</td>
+        <td className="p-3 text-center text-slate-200">{vehicle.model}</td>
+        <td className="p-3 text-center text-slate-200">{vehicle.licensePlate}</td>
+        <td className="p-3 text-center text-slate-200">{vehicle.productionYear}</td>
+        <td className={`p-3 text-center ${getStatusClass(vehicle?.status)}`}>
           {formatStatus(vehicle.status)}
         </td>
-        <td className="text-center">{vehicle.mileage.toLocaleString()} km</td>
-        <td className="text-center">{vehicle.vin}</td>
-        <td className="text-center">{formatDate(vehicle.insuranceExpiry)}</td>
-        <td className="text-center">{formatDate(vehicle.nextInspectionDate)}</td>
-        <td className="text-center">
+        <td className="p-3 text-center text-slate-200">{vehicle.mileage.toLocaleString()} km</td>
+        <td className="p-3 text-center text-slate-200">{vehicle.vin}</td>
+        <td className="p-3 text-center text-slate-200">{formatDate(vehicle.insuranceExpiry)}</td>
+        <td className="p-3 text-center text-slate-200">{formatDate(vehicle.nextInspectionDate)}</td>
+        <td className="p-3 text-center">
           <button
             onClick={() => handleEditClick(vehicle)}
-            className="inline-flex items-center justify-center rounded-sm bg-gradient-to-r from-sky-900/40 to-slate-600/40 px-3 font-semibold text-slate-300 hover:from-sky-700/70 hover:to-indigo-700/70"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-700/50 to-indigo-700/50 px-4 py-2 text-sm font-semibold text-white hover:from-sky-600/70 hover:to-indigo-600/70 hover:shadow-lg transition-all"
           >
+            <FaEdit className="text-sm" />
             Edytuj
           </button>
         </td>
@@ -192,34 +269,35 @@ function VehicleManagment({ navigateBack }) {
   };
 
   return (
-    <>
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 to-slate-800 pt-4">
-        <div className="mx-auto max-w-7xl items-center justify-center">
-          <header className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <h1 className="text-3xl font-bold leading-tight tracking-tight text-white">
-              Zarządzanie Flotą Pojazdów
-            </h1>
-            <button
-              onClick={navigateBack}
-              className="rounded-md bg-slate-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-600"
-            >
-              Powrót do Panelu Głównego
-            </button>
-          </header>
-          <main>
-            <div className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-sky-700 to-indigo-700 p-2 font-semibold hover:from-sky-600 hover:to-indigo-600">
-              <button onClick={() => setIsFormVisible(true)} className="">
-                {' '}
-                {'Dodaj Nowy Pojazd'}
-              </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="vehicleManagment" />
+      <div className="px-6 py-8 mx-auto max-w-7xl">
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="p-6 border bg-gradient-to-br from-slate-800/80 to-slate-700/50 backdrop-blur-sm rounded-3xl border-slate-600/30">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl text-yellow-400 drop-shadow-lg"><FaTaxi /></span>
+              <h1 className="text-3xl font-extrabold text-white tracking-tight">Zarządzanie flotą</h1>
             </div>
+            <p className="mt-1 text-base text-slate-300">Dodawaj, edytuj i usuwaj pojazdy z floty taksówek</p>
+          </div>
+          <div className="flex items-center justify-end p-6 border bg-gradient-to-br from-blue-900/40 to-indigo-800/30 backdrop-blur-sm rounded-3xl border-indigo-700/30">
+            
+            <button
+              onClick={() => setIsFormVisible(true)}
+              className="inline-flex items-center gap-2 px-5 py-2 font-semibold rounded-3xl bg-gradient-to-r from-sky-700/60 to-indigo-700/60 hover:from-sky-600/70 hover:to-indigo-600/70 text-white shadow-lg transition-all"
+            >
+              <FaPlus className="text-lg" />
+              Dodaj Nowy Pojazd
+            </button>
+          </div>
+        </div>
 
-            <div className="mt-8 flow-root">
-              <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                  <div className="overflow-hidden rounded-lg bg-slate-800 shadow ring-1 ring-black ring-opacity-5">
-                    <table className="min-w-full divide-y divide-slate-700">
-                      <thead className="bg-slate-700/50">
+        <div className="flow-root mt-4">
+          <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+              <div className="overflow-hidden border shadow rounded-3xl bg-gradient-to-br from-slate-800/70 to-slate-700/50 backdrop-blur-sm border-slate-600/30">
+                <table className="min-w-full divide-y divide-slate-700">
+                  <thead className="bg-slate-700/30">
                         <tr>
                           <th
                             scope="col"
@@ -283,7 +361,7 @@ function VehicleManagment({ navigateBack }) {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-700 bg-slate-800">
+                      <tbody className="divide-y divide-slate-700 bg-slate-800/30">
                         {renderTableContent()}
                       </tbody>
                     </table>
@@ -291,9 +369,7 @@ function VehicleManagment({ navigateBack }) {
                 </div>
               </div>
             </div>
-          </main>
-        </div>
-      </div>
+          </div>
 
       {isFormVisible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -323,7 +399,7 @@ function VehicleManagment({ navigateBack }) {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -382,7 +458,7 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
 
   return (
     <div className="ring-white/6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 ring-2">
-      <div className="flex items-center justify-between border-b border-slate-700 p-6">
+      <div className="flex items-center justify-between p-6 border-b border-slate-700">
         <div>
           <h3 className="text-lg font-semibold text-white">Dodaj nowy pojazd</h3>
           <p className="text-sm text-slate-400">Wprowadź dane pojazdu, aby dodać go do floty.</p>
@@ -391,11 +467,11 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
+            className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
+              className="w-5 h-5"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -411,11 +487,11 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
         {error && (
-          <div className="rounded bg-red-600/20 p-3 text-red-200 sm:col-span-2">{error}</div>
+          <div className="p-3 text-red-200 rounded bg-red-600/20 sm:col-span-2">{error}</div>
         )}
 
         <div>
-          <label htmlFor="brand" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="brand" className="block mb-1 text-sm text-slate-300">
             Marka
           </label>
           <input
@@ -425,12 +501,12 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
             value={newData.brand}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="model" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="model" className="block mb-1 text-sm text-slate-300">
             Model
           </label>
           <input
@@ -440,12 +516,12 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
             value={newData.model}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="productionYear" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="productionYear" className="block mb-1 text-sm text-slate-300">
             Rok produkcji
           </label>
           <input
@@ -455,12 +531,12 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
             value={newData.productionYear}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
 
         <div>
-          <label htmlFor="licensePlate" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="licensePlate" className="block mb-1 text-sm text-slate-300">
             Numer rejestracyjny
           </label>
           <input
@@ -470,12 +546,12 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
             value={newData.licensePlate}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="vin" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="vin" className="block mb-1 text-sm text-slate-300">
             VIN
           </label>
           <input
@@ -485,12 +561,12 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
             value={newData.vin}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="mileage" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="mileage" className="block mb-1 text-sm text-slate-300">
             Przebieg (km)
           </label>
           <input
@@ -500,12 +576,12 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
             value={newData.mileage}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
 
         <div>
-          <label htmlFor="status" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="status" className="block mb-1 text-sm text-slate-300">
             Status
           </label>
           <select
@@ -514,7 +590,7 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
             value={newData.status}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           >
             <option value="active">Aktywny</option>
             <option value="inactive">Nieaktywny</option>
@@ -526,7 +602,7 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
           <div className="relative">
             <label
               htmlFor="insuranceExpiry"
-              className="mb-1 block cursor-pointer select-none text-sm text-slate-300"
+              className="block mb-1 text-sm cursor-pointer select-none text-slate-300"
               onClick={() => document.getElementById('insuranceExpiry').showPicker()}
             >
               Termin ubezpieczenia
@@ -542,17 +618,17 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
                   value={
                     newData.insuranceExpiry ? formatDateForDisplay(newData.insuranceExpiry) : ''
                   }
-                  className="w-full cursor-pointer select-none rounded-l-md border border-r-0 border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none"
+                  className="w-full px-3 py-2 border border-r-0 outline-none cursor-pointer select-none rounded-l-md border-slate-600 bg-slate-700 text-slate-100"
                   placeholder="dd/mm/rrrr"
                 />
-                <div className="flex cursor-pointer select-none items-center rounded-r-md border border-l-0 border-slate-600 bg-slate-700 px-3 py-2">
+                <div className="flex items-center px-3 py-2 border border-l-0 cursor-pointer select-none rounded-r-md border-slate-600 bg-slate-700">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="h-5 w-5 text-slate-300"
+                    className="w-5 h-5 text-slate-300"
                   >
                     <path
                       strokeLinecap="round"
@@ -568,7 +644,7 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
                 id="insuranceExpiry"
                 value={newData.insuranceExpiry}
                 onChange={handleChange}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
           </div>
@@ -578,7 +654,7 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
           <div className="relative">
             <label
               htmlFor="nextInspectionDate"
-              className="mb-1 block cursor-pointer select-none text-sm text-slate-300"
+              className="block mb-1 text-sm cursor-pointer select-none text-slate-300"
               onClick={() => document.getElementById('nextInspectionDate').showPicker()}
             >
               Termin przeglądu
@@ -596,17 +672,17 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
                       ? formatDateForDisplay(newData.nextInspectionDate)
                       : ''
                   }
-                  className="w-full cursor-pointer select-none rounded-l-md border border-r-0 border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none"
+                  className="w-full px-3 py-2 border border-r-0 outline-none cursor-pointer select-none rounded-l-md border-slate-600 bg-slate-700 text-slate-100"
                   placeholder="dd/mm/rrrr"
                 />
-                <div className="flex cursor-pointer select-none items-center rounded-r-md border border-l-0 border-slate-600 bg-slate-700 px-3 py-2">
+                <div className="flex items-center px-3 py-2 border border-l-0 cursor-pointer select-none rounded-r-md border-slate-600 bg-slate-700">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="h-5 w-5 text-slate-300"
+                    className="w-5 h-5 text-slate-300"
                   >
                     <path
                       strokeLinecap="round"
@@ -622,24 +698,24 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
                 id="nextInspectionDate"
                 value={newData.nextInspectionDate}
                 onChange={handleChange}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
           </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-end gap-3 sm:col-span-2">
+        <div className="flex items-center justify-end gap-3 mt-2 sm:col-span-2">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md bg-slate-700 px-4 py-2 text-slate-200 transition hover:bg-slate-600"
+            className="px-4 py-2 transition rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600"
           >
             Anuluj
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 font-semibold text-white shadow transition hover:from-sky-600 hover:to-indigo-600"
+            className="inline-flex items-center gap-2 px-5 py-2 font-semibold text-white transition rounded-md shadow bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600"
           >
             <span>{isSubmitting ? 'Dodawanie...' : 'Dodaj pojazd'}</span>
           </button>
@@ -709,7 +785,7 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
 
   return (
     <div className="ring-white/6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 ring-2">
-      <div className="flex items-center justify-between border-b border-slate-700 p-6">
+      <div className="flex items-center justify-between p-6 border-b border-slate-700">
         <div>
           <h3 className="text-lg font-semibold text-white">
             Edytuj Pojazd: {vehicle.brand} {vehicle.model}
@@ -719,11 +795,11 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
+          className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
+            className="w-5 h-5"
             viewBox="0 0 20 20"
             fill="currentColor"
           >
@@ -737,11 +813,11 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
       </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
         {error && (
-          <div className="rounded bg-red-600/20 p-3 text-red-200 sm:col-span-2">{error}</div>
+          <div className="p-3 text-red-200 rounded bg-red-600/20 sm:col-span-2">{error}</div>
         )}
 
         <div>
-          <label htmlFor="edit-mileage" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="edit-mileage" className="block mb-1 text-sm text-slate-300">
             Przebieg (km)
           </label>
           <input
@@ -751,12 +827,12 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
             value={newData.mileage}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-status" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="edit-status" className="block mb-1 text-sm text-slate-300">
             Status
           </label>
           <select
@@ -765,7 +841,7 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
             value={newData.status}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           >
             <option value="active">Aktywny</option>
             <option value="inactive">Nieaktywny</option>
@@ -777,7 +853,7 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
           <div className="relative">
             <label
               htmlFor="edit-insuranceExpiry"
-              className="mb-1 block cursor-pointer select-none text-sm text-slate-300"
+              className="block mb-1 text-sm cursor-pointer select-none text-slate-300"
               onClick={() => document.getElementById('edit-insuranceExpiry').showPicker()}
             >
               Termin ubezpieczenia
@@ -793,17 +869,17 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
                   value={
                     newData.insuranceExpiry ? formatDateForDisplay(newData.insuranceExpiry) : ''
                   }
-                  className="w-full cursor-pointer select-none rounded-l-md border border-r-0 border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none"
+                  className="w-full px-3 py-2 border border-r-0 outline-none cursor-pointer select-none rounded-l-md border-slate-600 bg-slate-700 text-slate-100"
                   placeholder="dd/mm/rrrr"
                 />
-                <div className="flex cursor-pointer select-none items-center rounded-r-md border border-l-0 border-slate-600 bg-slate-700 px-3 py-2">
+                <div className="flex items-center px-3 py-2 border border-l-0 cursor-pointer select-none rounded-r-md border-slate-600 bg-slate-700">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="h-5 w-5 text-slate-300"
+                    className="w-5 h-5 text-slate-300"
                   >
                     <path
                       strokeLinecap="round"
@@ -819,7 +895,7 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
                 id="edit-insuranceExpiry"
                 value={newData.insuranceExpiry}
                 onChange={handleChange}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
           </div>
@@ -829,7 +905,7 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
           <div className="relative">
             <label
               htmlFor="edit-nextInspectionDate"
-              className="mb-1 block cursor-pointer select-none text-sm text-slate-300"
+              className="block mb-1 text-sm cursor-pointer select-none text-slate-300"
               onClick={() => document.getElementById('edit-nextInspectionDate').showPicker()}
             >
               Termin przeglądu
@@ -847,17 +923,17 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
                       ? formatDateForDisplay(newData.nextInspectionDate)
                       : ''
                   }
-                  className="w-full cursor-pointer select-none rounded-l-md border border-r-0 border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none"
+                  className="w-full px-3 py-2 border border-r-0 outline-none cursor-pointer select-none rounded-l-md border-slate-600 bg-slate-700 text-slate-100"
                   placeholder="dd/mm/rrrr"
                 />
-                <div className="flex cursor-pointer select-none items-center rounded-r-md border border-l-0 border-slate-600 bg-slate-700 px-3 py-2">
+                <div className="flex items-center px-3 py-2 border border-l-0 cursor-pointer select-none rounded-r-md border-slate-600 bg-slate-700">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
-                    className="h-5 w-5 text-slate-300"
+                    className="w-5 h-5 text-slate-300"
                   >
                     <path
                       strokeLinecap="round"
@@ -873,18 +949,18 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
                 id="edit-nextInspectionDate"
                 value={newData.nextInspectionDate}
                 onChange={handleChange}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
           </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between sm:col-span-2">
+        <div className="flex items-center justify-between mt-2 sm:col-span-2">
           <button
             type="button"
             onClick={handleDelete}
             disabled={isDeleting || isUpdating}
-            className="inline-flex items-center gap-2 rounded-md bg-red-800 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-red-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition bg-red-800 rounded-md shadow hover:bg-red-700 disabled:opacity-50"
           >
             {isDeleting ? 'Usuwanie...' : 'Usuń Pojazd'}
           </button>
@@ -893,14 +969,14 @@ function EditVehicleForm({ vehicle, onUpdate, onDelete, onCancel, isUpdating, is
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-md bg-slate-700 px-4 py-2 text-slate-200 transition hover:bg-slate-600"
+              className="px-4 py-2 transition rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600"
             >
               Anuluj
             </button>
             <button
               type="submit"
               disabled={isUpdating || isDeleting}
-              className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 font-semibold text-white shadow transition hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2 font-semibold text-white transition rounded-md shadow bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50"
             >
               <span>{isUpdating ? 'Zapisywanie...' : 'Zapisz zmiany'}</span>
             </button>

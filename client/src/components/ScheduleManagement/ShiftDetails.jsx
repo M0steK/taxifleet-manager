@@ -285,6 +285,7 @@ function ShiftDetails
                                 {(() => {
                                     let unavailableDrivers = new Set();
                                     let unavailableVehicles = new Set();
+                                    let invalidDocVehicles = new Set();
 
                                     if(form.start && form.end && selectedDate){
                                         const range = computeFormDateRange(
@@ -311,6 +312,18 @@ function ShiftDetails
 
                                                     if(scheduleUserId) unavailableDrivers.add(scheduleUserId);
                                                     if(scheduleVehicleId) unavailableVehicles.add(scheduleVehicleId);
+                                                }
+                                            }
+                                            // oznaczanie pojazdow z niewaznymi dok
+                                            for (const v of vehicles) {
+                                                if (v.status !== 'active') {
+                                                    invalidDocVehicles.add(v.id);
+                                                    continue;
+                                                }
+                                                const ins = new Date(v.insuranceExpiry);
+                                                const insp = new Date(v.nextInspectionDate);
+                                                if (ins < range.endTime || insp < range.endTime) {
+                                                    invalidDocVehicles.add(v.id);
                                                 }
                                             }
                                         }
@@ -357,14 +370,15 @@ function ShiftDetails
                                                     <option value="">Wybierz pojazd</option>
                                                     {vehicles.map((v) => {
                                                         const isUnavailable = unavailableVehicles.has(v.id);
+                                                        const isInvalidDocs = invalidDocVehicles.has(v.id);
                                                         return(
                                                             <option
-                                                            kay={v.id}
+                                                            key={v.id}
                                                             value={v.id}
-                                                            disabled={isUnavailable}
-                                                            style={isUnavailable ? {color: '#94a3b8', fontStyle: 'italic'} : {}}
+                                                            disabled={isUnavailable || isInvalidDocs}
+                                                            style={ (isUnavailable || isInvalidDocs) ? {color: '#94a3b8', fontStyle: 'italic'} : {}}
                                                             >
-                                                                {v.brand} {v.model} - {v.licensePlate} {isUnavailable ? ' (zajęty)' : ''}
+                                                                {v.brand} {v.model} - {v.licensePlate} {isUnavailable ? ' (zajęty)' : isInvalidDocs ? ' (nieważne dokumenty)' : ''}
 
                                                             </option>
                                                         );
@@ -373,6 +387,11 @@ function ShiftDetails
                                                 {form.vehicleId && unavailableVehicles.has(form.vehicleId) && (
                                                     <p className="mt-1 text-xs text-rose-400">
                                                         Ten pojazd jest już zajęty w wybranym czasie
+                                                    </p>
+                                                )}
+                                                {form.vehicleId && invalidDocVehicles.has(form.vehicleId) && (
+                                                    <p className="mt-1 text-xs text-rose-400">
+                                                        Dokumenty pojazdu są nieważne dla wybranej zmiany
                                                     </p>
                                                 )}
                                             </label>

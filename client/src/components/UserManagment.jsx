@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import Header from './Header';
+import { FaUserCog, FaUserPlus, FaEdit } from 'react-icons/fa';
 
 /* ------------------------------- Main -----------------------------*/
-function UserManagment({ navigateBack }) {
+function UserManagment({ user, onLogout, navigateTo }) {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -96,29 +98,56 @@ function UserManagment({ navigateBack }) {
     }
   };
 
+  const formatRole = (role) => {
+    const roleMap = {
+      'admin': 'Admin',
+      'driver': 'Kierowca'
+    };
+    return roleMap[role] || role;
+  };
+
   const renderTableContent = () => {
     if (isLoading) {
-      return <p>Ładowanie użytkowników...</p>;
+      return (
+        <tr>
+          <td colSpan="6" className="p-3 text-center text-slate-300">
+            Ładowanie użytkowników...
+          </td>
+        </tr>
+      );
     }
     if (error) {
-      return <p> Błąd {error}</p>;
+      return (
+        <tr>
+          <td colSpan="6" className="p-3 text-center text-red-400">
+            Błąd: {error}
+          </td>
+        </tr>
+      );
     }
     if (users.length === 0) {
-      return <p>Brak użytkowników do wyświetlenia</p>;
+      return (
+        <tr>
+          <td colSpan="6" className="p-3 text-center text-slate-300">
+            Brak użytkowników do wyświetlenia
+          </td>
+        </tr>
+      );
     }
 
     return users.map((user) => (
-      <tr key={user.id}>
-        <td className="p-3 text-center">{user.firstName}</td>
-        <td className="text-center">{user.lastName}</td>
-        <td className="text-center">{user.email}</td>
-        <td className="text-center">{user.phoneNumber.toLocaleString()}</td>
-        <td className="text-center">{user.role}</td>
-        <td className="text-center">
+      <tr key={user.id} className="hover:bg-slate-700/20 transition-colors">
+        <td className="p-3 text-center text-slate-200">{user.firstName}</td>
+        <td className="p-3 text-center text-slate-200">{user.lastName}</td>
+        <td className="p-3 text-center text-slate-200">{user.email}</td>
+        <td className="p-3 text-center text-slate-200">{user.phoneNumber?.toLocaleString() || '-'}</td>
+        <td className="p-3 text-center text-slate-200">{formatRole(user.role)}</td>
+        <td className="p-3 text-center">
           <button
             onClick={() => handleEditClick(user)}
-            className="inline-flex items-center justify-center rounded-sm bg-gradient-to-r from-sky-900/40 to-slate-600/40 px-3 font-semibold text-slate-300 hover:from-sky-700/70 hover:to-indigo-700/70"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-700/50 to-indigo-700/50 px-4 py-2 text-sm font-semibold text-white hover:from-sky-600/70 hover:to-indigo-600/70 hover:shadow-lg transition-all"
           >
+            <FaEdit className="text-sm" />
             Edytuj
           </button>
         </td>
@@ -127,34 +156,34 @@ function UserManagment({ navigateBack }) {
   };
 
   return (
-    <>
-      <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 to-slate-800 pt-4">
-        <div className="mx-auto max-w-7xl items-center justify-center">
-          <header className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <h1 className="text-3xl font-bold leading-tight tracking-tight text-white">
-              Zarządzanie Użytkownikami
-            </h1>
-            <button
-              onClick={navigateBack}
-              className="rounded-md bg-slate-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-600"
-            >
-              Powrót do Panelu Głównego
-            </button>
-          </header>
-          <main>
-            <div className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-sky-700/50 to-indigo-700/50 p-2 font-semibold hover:from-sky-600/60 hover:to-indigo-600/60">
-              <button onClick={() => setIsFormVisible(true)} className="">
-                {' '}
-                {'Dodaj Nowego Użytkownika'}
-              </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="userManagment" />
+      <div className="px-6 py-8 mx-auto max-w-7xl">
+        <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
+          <div className="p-6 border bg-gradient-to-br from-slate-800/80 to-slate-700/50 backdrop-blur-sm rounded-3xl border-slate-600/30">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl text-indigo-400 drop-shadow-lg"><FaUserCog /></span>
+              <h1 className="text-3xl font-extrabold text-white tracking-tight">Zarządzanie użytkownikami</h1>
             </div>
+            <p className="mt-1 text-base text-slate-300">Dodawaj, edytuj i usuwaj użytkowników w systemie floty</p>
+          </div>
+          <div className="flex items-center justify-end p-6 border bg-gradient-to-br from-blue-900/40 to-indigo-800/30 backdrop-blur-sm rounded-3xl border-indigo-700/30">
+            <button
+              onClick={() => setIsFormVisible(true)}
+              className="inline-flex items-center gap-2 px-5 py-2 font-semibold rounded-3xl bg-gradient-to-r from-sky-700/60 to-indigo-700/60 hover:from-sky-600/70 hover:to-indigo-600/70 text-white shadow-lg transition-all"
+            >
+              <FaUserPlus className="text-lg" />
+              Dodaj nowego użytkownika
+            </button>
+          </div>
+        </div>
 
-            <div className="mt-8 flow-root">
-              <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                  <div className="overflow-hidden rounded-lg bg-slate-800 shadow ring-1 ring-black ring-opacity-5">
-                    <table className="min-w-full divide-y divide-slate-700">
-                      <thead className="bg-slate-700/50">
+        <div className="flow-root mt-4">
+          <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+              <div className="overflow-hidden border shadow rounded-3xl bg-gradient-to-br from-slate-800/70 to-slate-700/50 backdrop-blur-sm border-slate-600/30">
+                <table className="min-w-full divide-y divide-slate-700">
+                      <thead className="bg-slate-700/30">
                         <tr>
                           <th
                             scope="col"
@@ -194,7 +223,7 @@ function UserManagment({ navigateBack }) {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-700 bg-slate-800">
+                      <tbody className="divide-y divide-slate-700 bg-slate-800/30">
                         {renderTableContent()}
                       </tbody>
                     </table>
@@ -202,36 +231,34 @@ function UserManagment({ navigateBack }) {
                 </div>
               </div>
             </div>
-          </main>
-        </div>
       </div>
 
-      {isFormVisible && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setIsFormVisible(false)} />
-          <div className="relative z-10 w-full max-w-3xl p-4">
-            <AddUserForm onUserAdded={handleUserAdded} onCancel={() => setIsFormVisible(false)} />
+        {isFormVisible && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setIsFormVisible(false)} />
+            <div className="relative z-10 w-full max-w-3xl p-4">
+              <AddUserForm onUserAdded={handleUserAdded} onCancel={() => setIsFormVisible(false)} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={handleCloseModal} />
-          <div className="relative z-10 w-full max-w-3xl p-4">
-            <EditUserForm
-              user={editingUser}
-              onUpdate={handleUpdateUser}
-              onDelete={handleDeleteUser}
-              onCancel={handleCloseModal}
-              isUpdating={isUpdating}
-              isDeleting={isDeleting}
-              error={editError}
-            />
+        {editingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50" onClick={handleCloseModal} />
+            <div className="relative z-10 w-full max-w-3xl p-4">
+              <EditUserForm
+                user={editingUser}
+                onUpdate={handleUpdateUser}
+                onDelete={handleDeleteUser}
+                onCancel={handleCloseModal}
+                isUpdating={isUpdating}
+                isDeleting={isDeleting}
+                error={editError}
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+      </div>
   );
 }
 
@@ -283,7 +310,7 @@ function AddUserForm({ onUserAdded, onCancel }) {
 
   return (
     <div className="ring-white/6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 ring-2">
-      <div className="flex items-center justify-between border-b border-slate-700 p-6">
+      <div className="flex items-center justify-between p-6 border-b border-slate-700">
         <div>
           <h3 className="text-lg font-semibold text-white">Dodaj Nowego Użytkownika</h3>
           <p className="text-sm text-slate-400">
@@ -294,11 +321,11 @@ function AddUserForm({ onUserAdded, onCancel }) {
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
+            className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
+              className="w-5 h-5"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -314,11 +341,11 @@ function AddUserForm({ onUserAdded, onCancel }) {
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
         {error && (
-          <div className="rounded bg-red-600/20 p-3 text-red-200 sm:col-span-2">{error}</div>
+          <div className="p-3 text-red-200 rounded bg-red-600/20 sm:col-span-2">{error}</div>
         )}
 
         <div>
-          <label htmlFor="firstName" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="firstName" className="block mb-1 text-sm text-slate-300">
             Imię
           </label>
           <input
@@ -328,11 +355,11 @@ function AddUserForm({ onUserAdded, onCancel }) {
             value={newData.firstName}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-sky-500"
           />
         </div>
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="email" className="block mb-1 text-sm text-slate-300">
             Email
           </label>
           <input
@@ -342,11 +369,11 @@ function AddUserForm({ onUserAdded, onCancel }) {
             value={newData.email}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none appearance-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           />
         </div>
         <div>
-          <label htmlFor="lastName" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="lastName" className="block mb-1 text-sm text-slate-300">
             Nazwisko
           </label>
           <input
@@ -356,12 +383,12 @@ function AddUserForm({ onUserAdded, onCancel }) {
             value={newData.lastName}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="phoneNumber" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="phoneNumber" className="block mb-1 text-sm text-slate-300">
             Numer Telefonu
           </label>
           <input
@@ -371,12 +398,12 @@ function AddUserForm({ onUserAdded, onCancel }) {
             value={newData.phoneNumber}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="password" className="block mb-1 text-sm text-slate-300">
             Hasło
           </label>
           <input
@@ -386,12 +413,12 @@ function AddUserForm({ onUserAdded, onCancel }) {
             value={newData.password}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="role" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="role" className="block mb-1 text-sm text-slate-300">
             Rola
           </label>
           <select
@@ -400,25 +427,25 @@ function AddUserForm({ onUserAdded, onCancel }) {
             value={newData.role}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           >
             <option value="admin">Admin</option>
             <option value="driver">Kierowca</option>
           </select>
         </div>
 
-        <div className="mt-2 flex items-center justify-end gap-3 sm:col-span-2">
+        <div className="flex items-center justify-end gap-3 mt-2 sm:col-span-2">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md bg-slate-700 px-4 py-2 text-slate-200 transition hover:bg-slate-600"
+            className="px-4 py-2 transition rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600"
           >
             Anuluj
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 font-semibold text-white shadow transition hover:from-sky-600 hover:to-indigo-600"
+            className="inline-flex items-center gap-2 px-5 py-2 font-semibold text-white transition rounded-md shadow bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600"
           >
             <span>{isSubmitting ? 'Dodawanie...' : 'Dodaj użytkownika'}</span>
           </button>
@@ -460,7 +487,7 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
 
   return (
     <div className="ring-white/6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 ring-2">
-      <div className="flex items-center justify-between border-b border-slate-700 p-6">
+      <div className="flex items-center justify-between p-6 border-b border-slate-700">
         <div>
           <h3 className="text-lg font-semibold text-white">
             Edytuj Użytkownika: {user.firstName} {user.lastName}
@@ -472,11 +499,11 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
+          className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-700 text-slate-200 hover:bg-slate-600"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
+            className="w-5 h-5"
             viewBox="0 0 20 20"
             fill="currentColor"
           >
@@ -490,11 +517,11 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
       </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
         {error && (
-          <div className="rounded bg-red-600/20 p-3 text-red-200 sm:col-span-2">{error}</div>
+          <div className="p-3 text-red-200 rounded bg-red-600/20 sm:col-span-2">{error}</div>
         )}
 
         <div>
-          <label htmlFor="edit-firstName" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="edit-firstName" className="block mb-1 text-sm text-slate-300">
             Imię
           </label>
           <input
@@ -504,12 +531,12 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
             value={newData.firstName}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none appearance-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-lastName" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="edit-lastName" className="block mb-1 text-sm text-slate-300">
             Nazwisko
           </label>
           <input
@@ -519,12 +546,12 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
             value={newData.lastName}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none appearance-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-email" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="edit-email" className="block mb-1 text-sm text-slate-300">
             Email
           </label>
           <input
@@ -534,12 +561,12 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
             value={newData.email}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none appearance-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-phoneNumber" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="edit-phoneNumber" className="block mb-1 text-sm text-slate-300">
             Numer Telefonu
           </label>
           <input
@@ -549,12 +576,12 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
             value={newData.phoneNumber}
             onChange={handleChange}
             required
-            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none [-moz-appearance:textfield] focus:ring-2 focus:ring-sky-500"
+            className="w-full appearance-none rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
 
         <div>
-          <label htmlFor="edit-role" className="mb-1 block text-sm text-slate-300">
+          <label htmlFor="edit-role" className="block mb-1 text-sm text-slate-300">
             Rola
           </label>
           <select
@@ -563,19 +590,19 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
             value={newData.role}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full px-3 py-2 border rounded-md outline-none border-slate-600 bg-slate-700 text-slate-100 focus:ring-2 focus:ring-sky-500"
           >
             <option value="admin">Admin</option>
             <option value="driver">Kierowca</option>
           </select>
         </div>
 
-        <div className="mt-2 flex items-center justify-between sm:col-span-2">
+        <div className="flex items-center justify-between mt-2 sm:col-span-2">
           <button
             type="button"
             onClick={handleDelete}
             disabled={isDeleting || isUpdating}
-            className="inline-flex items-center gap-2 rounded-md bg-red-800 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-red-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white transition bg-red-800 rounded-md shadow hover:bg-red-700 disabled:opacity-50"
           >
             {isDeleting ? 'Usuwanie...' : 'Usuń Użytkownika'}
           </button>
@@ -584,14 +611,14 @@ function EditUserForm({ user, onUpdate, onDelete, onCancel, isUpdating, isDeleti
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-md bg-slate-700 px-4 py-2 text-slate-200 transition hover:bg-slate-600"
+              className="px-4 py-2 transition rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600"
             >
               Anuluj
             </button>
             <button
               type="submit"
               disabled={isUpdating || isDeleting}
-              className="inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 font-semibold text-white shadow transition hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2 font-semibold text-white transition rounded-md shadow bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 disabled:opacity-50"
             >
               <span>{isUpdating ? 'Zapisywanie...' : 'Zapisz zmiany'}</span>
             </button>

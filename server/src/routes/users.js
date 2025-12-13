@@ -1,0 +1,131 @@
+import express from 'express';
+import bcrypt from 'bcrypt';
+import prisma from '../config/database.js';
+
+const router = express.Router();
+
+router.post('/', async (req, res) => {
+  try {
+    const { firstName, lastName, email, password, phoneNumber, role } =
+      req.body;
+
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.user.create({
+      data: {
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        passwordHash: hashedPassword,
+        phoneNumber: phoneNumber,
+        role: role,
+      },
+    });
+
+    delete newUser.passwordHash;
+
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error('Error creating user:', error);
+    if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+      return res
+        .status(409)
+        .json({ error: 'User with this email already exists' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    users.forEach((user) => delete user.passwordHash);
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    delete user.passwordHash;
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(`Error fetching user with id: ${req.params.id}`, error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.patch('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, email, phoneNumber, role } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: id,
+      },
+
+      data: {
+        firstName,
+        lastName,
+        email,
+        phoneNumber,
+        role,
+      },
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    delete updatedUser.passwordHash;
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error(`Error updating user with id: ${req.params.id}`, error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.user.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    console.error(`Error deleting user with id: ${req.params.id}`, error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+export default router;

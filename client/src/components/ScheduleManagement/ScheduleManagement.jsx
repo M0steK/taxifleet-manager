@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import CalendarView from './CalendarView.jsx';
 import DayShifts from './DayShifts.jsx';
 import ShiftDetails from './ShiftDetails.jsx';
+import Header from '../Header';
 
 function formatDateKey(date) {
     const year = date.getFullYear();
@@ -32,7 +33,7 @@ function getMonthMatrix(year, monthIndex) {
     return weeks;
 }
 
-export default function ScheduleManagement({navigateBack}) {
+export default function ScheduleManagement({user, onLogout, navigateTo}) {
     const [selectedDate, setSelectedDate] = useState(null);
     const [currentMonth, setCurrentMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [schedules, setSchedules] = useState([]);
@@ -47,6 +48,24 @@ export default function ScheduleManagement({navigateBack}) {
     const [notesView, setNotesView] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
     
+    // 
+    useEffect(() => {
+        const navData = sessionStorage.getItem('scheduleNavigation');
+        if (navData) {
+            try {
+                const { date, shift } = JSON.parse(navData);
+                const targetDate = new Date(date);
+                targetDate.setHours(0, 0, 0, 0);
+                setSelectedDate(targetDate);
+                setSelectedShift(shift);
+                setCurrentShiftType(shift);
+                sessionStorage.removeItem('scheduleNavigation');
+            } catch (err) {
+                console.error('Error parsing navigation data:', err);
+            }
+        }
+    }, []);
+
     useEffect(() => {
         //fetch data from api
         async function fetchAllData() {
@@ -64,7 +83,7 @@ export default function ScheduleManagement({navigateBack}) {
             const usersData = await usersRes.json();
     
             setSchedules(schedulesData);
-            setUsers(usersData);
+            setUsers(usersData.filter(u => u.role === 'driver'));
             setVehicles(vehiclesData);
         } catch (err) {
             console.error('Bład podczas pobierania danych: ', err);
@@ -90,14 +109,13 @@ export default function ScheduleManagement({navigateBack}) {
     const byDateSchedules = useMemo(() => {
         const map = new Map();
         schedules.forEach((schedule) => {
-        const dateKey = new Date(schedule.startTime);
-        const h = dateKey.getHours();
+        const startDate = new Date(schedule.startTime);
+        const startHour = startDate.getHours();
     
-        // przypisanie do poprzedniego dnia jesli jest po polnocy
-        const anchor =
-            h >= 0 && h < 6
-            ? new Date(dateKey.getFullYear(), dateKey.getMonth(), dateKey.getDate() - 1)
-            : dateKey;
+    
+        const anchor = startHour >= 0 && startHour < 6
+            ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() - 1)
+            : startDate;
     
         const key = formatDateKey(anchor);
         if (!map.has(key)) map.set(key, []);
@@ -131,33 +149,36 @@ export default function ScheduleManagement({navigateBack}) {
     // liczenie nieuzywanych
     const countUnusedVehiclesForShift = (date, shiftKey) => {
         const {start, end} = getShiftWindow(date, shiftKey);
-        const used = new Set();
-        for (const s of schedules){
+        // tylko pojazdy z waznymi dokumentami i aktywne
+        const validVehicles = vehicles.filter(v => {
+            if (v.status !== 'active') return false;
+            const ins = new Date(v.insuranceExpiry);
+            const insp = new Date(v.nextInspectionDate);
+            return ins >= end && insp >= end;
+        });
+        const validVehicleIds = new Set(validVehicles.map(v => v.id));
+        const usedValid = new Set();
+        for (const s of schedules) {
             const sStart = new Date(s.startTime);
             const sEnd = new Date(s.endTime);
             if (shiftKey === 'night'){
                 const startHour = sStart.getHours();
-                const anchor = 
-                startHour >= 0 && startHour < 6 ?
-                    new Date(sStart.getFullYear(), sStart.getMonth(), sStart.getDate() - 1)
-                : new Date(sStart.getFullYear(), sStart.getMonth(), sStart.getDate());
-                
+                const anchor = startHour >= 0 && startHour < 6
+                    ? new Date(sStart.getFullYear(), sStart.getMonth(), sStart.getDate() - 1)
+                    : new Date(sStart.getFullYear(), sStart.getMonth(), sStart.getDate());
                 const anchorKey = formatDateKey(anchor);
                 const dateKey = formatDateKey(date);
                 if (anchorKey !== dateKey){
                     continue;
                 }
             }
-            if(sStart < end && sEnd > start){
-                const vehicleId = s.vehicleId;
-                if (vehicleId){
-                    used.add(vehicleId);
-                }
+            if (sStart < end && sEnd > start && validVehicleIds.has(s.vehicleId)) {
+                usedValid.add(s.vehicleId);
             }
         }
-            const usedCount = used.size;
-            const totalCount = vehicles.length;
-            return Math.max(totalCount - usedCount, 0);
+        const usedCount = usedValid.size;
+        const totalCount = validVehicles.length;
+        return Math.max(totalCount - usedCount, 0);
         
     }
 
@@ -380,7 +401,9 @@ export default function ScheduleManagement({navigateBack}) {
     }
 
     return (
-        <div className="min-h-screen p-6 bg-slate-900/90">
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="scheduleManagement" />
+        <div className="p-6">
         {selectedDate ? ( !selectedShift ? (
             <DayShifts
             selectedDate={selectedDate}
@@ -432,9 +455,9 @@ export default function ScheduleManagement({navigateBack}) {
             monthMatrix={monthMatrix}
             byDateSchedules={byDateSchedules}
             loading={loading}
-            navigateBack={navigateBack}
             countUnusedVehiclesForShift={countUnusedVehiclesForShift}/>
         )}
+        </div>
         </div>
     );
 }

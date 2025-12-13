@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
+import DriverDashboard from './components/DriverDashboard';
 import VehicleManagment from './components/VehicleManagment';
 import UserManagement from './components/UserManagment';
 import DriverMap from './components/DriverMap';
+import DriverShiftSignupPage from './components/DriverShiftSignupPage';
 import ScheduleManagement from './components/ScheduleManagement/ScheduleManagement';
 const featureFlags = {
   enableScheduleManagement: true,
@@ -34,29 +36,40 @@ function App() {
       {currentPage === 'login' && <LoginPage onLoginSuccess={handleLoginSuccess} />}
 
       {currentPage === 'dashboard' && (
-        <Dashboard
-          user={user}
-          onLogout={handleLogout}
-          navigateTo={NavigateFromDashboard}
-          featureFlags={featureFlags}
-        />
+        user?.role === 'driver' ? (
+          <DriverDashboard
+            user={user}
+            onLogout={handleLogout}
+            navigateTo={NavigateFromDashboard}
+          />
+        ) : (
+          <Dashboard
+            user={user}
+            onLogout={handleLogout}
+            navigateTo={NavigateFromDashboard}
+            featureFlags={featureFlags}
+          />
+        )
       )}
 
       {currentPage === 'vehicleManagment' && (
-        <VehicleManagment navigateBack={() => navigateTo('dashboard')} />
+        <VehicleManagment user={user} onLogout={handleLogout} navigateTo={navigateTo} />
       )}
 
       {currentPage === 'userManagment' && (
-        <UserManagement navigateBack={() => navigateTo('dashboard')} />
+        <UserManagement user={user} onLogout={handleLogout} navigateTo={navigateTo} />
       )}
 
       {currentPage === 'scheduleManagement' && featureFlags.enableScheduleManagement && (
-        <ScheduleManagement navigateBack={() => navigateTo('dashboard')} />
+        <ScheduleManagement user={user} onLogout={handleLogout} navigateTo={navigateTo} />
       )}
 
 
       {currentPage === 'driverMap' && (
-        <DriverMap user={user} navigateBack={() => navigateTo('dashboard')} />
+        <DriverMap user={user} onLogout={handleLogout} navigateTo={navigateTo} />
+      )}
+      {currentPage === 'driverSignup' && (
+        <DriverShiftSignupPage user={user} onLogout={handleLogout} navigateTo={navigateTo} />
       )}
     </div>
   );
