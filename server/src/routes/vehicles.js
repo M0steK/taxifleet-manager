@@ -129,7 +129,9 @@ router.patch('/:id', async (req, res) => {
       : existing.nextInspectionDate;
     const now = new Date();
     const docsValid = finalInsurance >= now && finalInspection >= now;
-    const finalStatus = docsValid ? 'active' : status || existing.status;
+
+    // Jeśli dokumenty są nieważne, wymuś 'inactive'; w przeciwnym razie respektuj podany status
+    const finalStatus = docsValid ? status || existing.status : 'inactive';
 
     const updatedVehicle = await prisma.vehicle.update({
       where: { id },

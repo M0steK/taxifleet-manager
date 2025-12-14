@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
     });
     if (!targetUser) {
       return res
-        .status(400)
+        .status(404)
         .json({ error: 'Invalid user or not in your company' });
     }
 

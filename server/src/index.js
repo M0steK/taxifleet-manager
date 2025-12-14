@@ -12,10 +12,12 @@ import { cleanupOldPickups } from './utils/cleanup.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// czyszczenie starych danych codziennie
-const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
-setInterval(cleanupOldPickups, CLEANUP_INTERVAL);
-cleanupOldPickups();
+// czyszczenie starych danych codziennie (pomijamy w testach, by uniknąć otwartych timerów)
+if (process.env.NODE_ENV !== 'test') {
+  const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
+  setInterval(cleanupOldPickups, CLEANUP_INTERVAL);
+  cleanupOldPickups();
+}
 
 app.use(express.json());
 
