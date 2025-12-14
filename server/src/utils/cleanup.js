@@ -12,7 +12,6 @@ export const cleanupOldPickups = async () => {
         },
       },
     });
-    
     if (result.count > 0) {
       console.log(`[Cleanup] Removed ${result.count} old pickup records.`);
     }

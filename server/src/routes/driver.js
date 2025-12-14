@@ -1,10 +1,10 @@
 import express from 'express';
 import prisma from '../config/database.js';
-import { 
-  getShiftWindow, 
-  formatLocalDate, 
-  getCurrentWeekDates, 
-  getWeekDates 
+import {
+  getShiftWindow,
+  formatLocalDate,
+  getCurrentWeekDates,
+  getWeekDates,
 } from '../utils/shiftHelpers.js';
 
 const router = express.Router();
@@ -103,13 +103,13 @@ router.get('/:userId/weekly-pickups', async (req, res) => {
   try {
     const { userId } = req.params;
     const now = new Date();
-    
+
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const dayOfWeek = today.getDay(); 
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const lastMonday = new Date(today);
-    lastMonday.setDate(today.getDate() - daysToMonday - 7); 
-    
+    lastMonday.setDate(today.getDate() - daysToMonday - 7);
+
     const lastSunday = new Date(lastMonday);
     lastSunday.setDate(lastMonday.getDate() + 6);
     lastSunday.setHours(23, 59, 59, 999);
@@ -128,8 +128,8 @@ router.get('/:userId/weekly-pickups', async (req, res) => {
     });
 
     const weekly = [0, 0, 0, 0, 0, 0, 0];
-    pickups.forEach(pickup => {
-      const day = pickup.pickupTimestamp.getDay(); 
+    pickups.forEach((pickup) => {
+      const day = pickup.pickupTimestamp.getDay();
       const index = day === 0 ? 6 : day - 1;
       weekly[index]++;
     });
@@ -151,11 +151,16 @@ router.get('/:userId/week-availability', async (req, res) => {
     }
 
     const allActiveVehicles = await prisma.vehicle.findMany({
-      where: { status: 'active' },
+      where: {
+        status: 'active',
+        companyId: user.companyId,
+      },
       select: { id: true, insuranceExpiry: true, nextInspectionDate: true },
     });
 
-    const weekDays = weekStart ? getWeekDates(weekStart) : getCurrentWeekDates();
+    const weekDays = weekStart
+      ? getWeekDates(weekStart)
+      : getCurrentWeekDates();
     const shiftTypes = ['morning', 'afternoon', 'night'];
     const results = [];
 
@@ -163,9 +168,12 @@ router.get('/:userId/week-availability', async (req, res) => {
     weekStartDate.setHours(0, 0, 0, 0);
     const weekEnd = new Date(weekDays[6]);
     weekEnd.setHours(23, 59, 59, 999);
-    
+
     const allWeekSchedules = await prisma.schedule.findMany({
       where: {
+        user: {
+          companyId: user.companyId,
+        },
         startTime: { lt: weekEnd },
         endTime: { gt: weekStartDate },
       },
@@ -177,56 +185,58 @@ router.get('/:userId/week-availability', async (req, res) => {
       const dayInfo = { date: dateIso };
       let driverShift = null;
       let driverShiftData = null;
-      
+
       const dayStart = new Date(dayDate);
       dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(dayDate);
       dayEnd.setHours(23, 59, 59, 999);
-      
+
       for (const shiftType of shiftTypes) {
         const { start, end } = getShiftWindow(dateIso, shiftType);
-        
+
         const validVehicles = allActiveVehicles.filter((v) => {
           return v.insuranceExpiry >= end && v.nextInspectionDate >= end;
         });
         const shiftCapacity = validVehicles.length;
-        
-        const validVehicleIds = validVehicles.map(v => v.id);
-        const schedules = allWeekSchedules.filter((s) => 
-          s.startTime < end && s.endTime > start
+
+        const validVehicleIds = validVehicles.map((v) => v.id);
+        const schedules = allWeekSchedules.filter(
+          (s) => s.startTime < end && s.endTime > start
         );
         const usedValidVehicleIds = new Set(
           schedules
-            .filter(s => validVehicleIds.includes(s.vehicleId))
-            .map(s => s.vehicleId)
+            .filter((s) => validVehicleIds.includes(s.vehicleId))
+            .map((s) => s.vehicleId)
         );
         const freeSlots = Math.max(shiftCapacity - usedValidVehicleIds.size, 0);
         dayInfo[shiftType] = { freeSlots, capacity: shiftCapacity };
-        
+
         if (!driverShift) {
-          const exactMatch = schedules.find((s) => 
-            s.userId === userId && 
-            s.startTime.getTime() === start.getTime() && 
-            s.endTime.getTime() === end.getTime()
+          const exactMatch = schedules.find(
+            (s) =>
+              s.userId === userId &&
+              s.startTime.getTime() === start.getTime() &&
+              s.endTime.getTime() === end.getTime()
           );
           if (exactMatch) {
             driverShift = shiftType;
             driverShiftData = {
               startTime: exactMatch.startTime,
-              endTime: exactMatch.endTime
+              endTime: exactMatch.endTime,
             };
           }
         }
       }
-      
+
       if (!driverShift) {
         // sprawdzenie czy ma jakas zmiane w dniu
-        const anyShiftInDay = allWeekSchedules.find((s) => 
-          s.userId === userId && 
-          s.startTime >= dayStart && 
-          s.startTime < dayEnd
+        const anyShiftInDay = allWeekSchedules.find(
+          (s) =>
+            s.userId === userId &&
+            s.startTime >= dayStart &&
+            s.startTime < dayEnd
         );
-        
+
         if (anyShiftInDay) {
           // okreslanie typu zmiany na podstawie godzin
           const hour = anyShiftInDay.startTime.getHours();
@@ -239,11 +249,11 @@ router.get('/:userId/week-availability', async (req, res) => {
           }
           driverShiftData = {
             startTime: anyShiftInDay.startTime,
-            endTime: anyShiftInDay.endTime
+            endTime: anyShiftInDay.endTime,
           };
         }
       }
-      
+
       if (driverShift) {
         dayInfo.driverShift = driverShift;
         if (driverShiftData) {
@@ -281,9 +291,9 @@ router.post('/:userId/week-signup', async (req, res) => {
           failed.push({ date, shiftType, reason: 'Invalid data' });
           continue;
         }
-        
+
         const { start, end } = getShiftWindow(date, shiftType);
-        
+
         const result = await prisma.$transaction(async (tx) => {
           const exactMatch = await tx.schedule.findFirst({
             where: {
@@ -293,11 +303,14 @@ router.post('/:userId/week-signup', async (req, res) => {
             },
             select: { id: true },
           });
-          
+
           if (exactMatch) {
-            return { success: false, reason: 'Driver already assigned to this exact shift' };
+            return {
+              success: false,
+              reason: 'Driver already assigned to this exact shift',
+            };
           }
-          
+
           const overlappingDriver = await tx.schedule.findFirst({
             where: {
               userId,
@@ -306,43 +319,59 @@ router.post('/:userId/week-signup', async (req, res) => {
             },
             select: { id: true },
           });
-          
+
           if (overlappingDriver) {
             return { success: false, reason: 'Driver has overlapping shift' };
           }
-          
+
           const allActiveVehicles = await tx.vehicle.findMany({
-            where: { status: 'active' },
-            select: { id: true, insuranceExpiry: true, nextInspectionDate: true },
+            where: {
+              status: 'active',
+              companyId: user.companyId,
+            },
+            select: {
+              id: true,
+              insuranceExpiry: true,
+              nextInspectionDate: true,
+            },
           });
-          
+
           const validVehicles = allActiveVehicles.filter((v) => {
             return v.insuranceExpiry >= end && v.nextInspectionDate >= end;
           });
-          
+
           if (validVehicles.length === 0) {
-            return { success: false, reason: 'No valid vehicles for this shift period' };
+            return {
+              success: false,
+              reason: 'No valid vehicles for this shift period',
+            };
           }
-          
+
           const validVehicleIds = validVehicles.map((v) => v.id);
-          
+
           const overlapping = await tx.schedule.findMany({
             where: {
+              user: {
+                companyId: user.companyId,
+              },
               startTime: { lt: end },
               endTime: { gt: start },
             },
             select: { vehicleId: true },
           });
-          
+
           const usedVehicles = new Set(overlapping.map((s) => s.vehicleId));
-          const freeVehicles = validVehicleIds.filter((id) => !usedVehicles.has(id));
-          
+          const freeVehicles = validVehicleIds.filter(
+            (id) => !usedVehicles.has(id)
+          );
+
           if (freeVehicles.length === 0) {
             return { success: false, reason: 'Shift full' };
           }
-          
-          const randomVehicleId = freeVehicles[Math.floor(Math.random() * freeVehicles.length)];
-          
+
+          const randomVehicleId =
+            freeVehicles[Math.floor(Math.random() * freeVehicles.length)];
+
           const schedule = await tx.schedule.create({
             data: {
               userId,
@@ -352,25 +381,24 @@ router.post('/:userId/week-signup', async (req, res) => {
               notes: ``,
             },
           });
-          
-          return { 
-            success: true, 
-            scheduleId: schedule.id, 
-            vehicleId: randomVehicleId 
+
+          return {
+            success: true,
+            scheduleId: schedule.id,
+            vehicleId: randomVehicleId,
           };
         });
-        
+
         if (result.success) {
-          created.push({ 
-            date, 
-            shiftType, 
-            scheduleId: result.scheduleId, 
-            vehicleId: result.vehicleId 
+          created.push({
+            date,
+            shiftType,
+            scheduleId: result.scheduleId,
+            vehicleId: result.vehicleId,
           });
         } else {
           failed.push({ date, shiftType, reason: result.reason });
         }
-        
       } catch (innerError) {
         console.error('Error assigning shift', innerError);
         failed.push({ date, shiftType, reason: 'Internal error' });

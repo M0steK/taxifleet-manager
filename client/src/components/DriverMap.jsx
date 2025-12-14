@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet';
 import 'leaflet.heat';
 import { hexbin } from 'd3-hexbin';
@@ -123,10 +123,13 @@ function DriverMap({ user, onLogout, navigateTo }) {
           url = `/api/pickups/recommendations?day=${day}&hour=${hour}`;
         }
 
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`,}
+        });
 
         if (!response.ok) {
-          throw new Error('Blad podczas pobierania danych o odbiorach');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Blad podczas pobierania danych o odbiorach: ${response.status}`);
         }
 
         const data = await response.json();
@@ -136,7 +139,7 @@ function DriverMap({ user, onLogout, navigateTo }) {
       }
     };
     fetchPickupData();
-  }, [viewMode]);
+  }, [viewMode, user.id]);
 
   const handleLogPickup = () => {
     setIsLoading(true);
@@ -150,41 +153,42 @@ function DriverMap({ user, onLogout, navigateTo }) {
         try {
           const response = await fetch('/api/pickups', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
             body: JSON.stringify({
               userId: user.id,
               latitude,
               longitude,
-              pickupTimestamp: new Date().toISOString(),
             }),
           });
 
           if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Nie udalo sie pobrać lokalizacji');
+            throw new Error('Nie udalo sie zapisac lokalizacji');
           }
 
-          const newPickupPoint = await response.json();
+          setMessage({ type: 'success', text: 'Lokalizacja zapisana pomyslnie!' });
+          
+          const refreshUrl = viewMode === 'recommendation' 
+            ? `/api/pickups/recommendations?day=${new Date().getDay()}&hour=${new Date().getHours()}`
+            : '/api/pickups';
+            
+          const refreshRes = await fetch(refreshUrl, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+          if(refreshRes.ok) {
+             const newData = await refreshRes.json();
+             setPickupData(newData);
+          }
 
-          setPickupData((currentPickups) => [...currentPickups, newPickupPoint]);
-          setMessage({
-            type: 'success',
-            text: 'Pomyślnie dokonano odbioru!',
-          });
         } catch (err) {
           setMessage({ type: 'error', text: err.message });
         } finally {
           setIsLoading(false);
         }
       },
-
-      (error) => {
-        console.error('Geolocation error: ', error);
-        setMessage({
-          type: 'error',
-          text: 'Nie można pobrać lokalizacji, czy zezwoliłeś na dostęp?',
-        });
+      () => {
         setIsLoading(false);
+        setMessage({ type: 'error', text: 'Nie udalo sie pobrac lokalizacji' });
       }
     );
   };

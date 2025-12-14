@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './Header';
 import { FaTaxi, FaPlus, FaEdit } from 'react-icons/fa';
 
@@ -15,7 +15,7 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editError, setEditError] = useState(null);
 
-  const checkAndUpdateExpiredVehicles = async (vehiclesData) => {
+  const checkAndUpdateExpiredVehicles = useCallback(async (vehiclesData) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -37,6 +37,7 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
           body: JSON.stringify({ status: 'inactive' }),
         });
@@ -46,13 +47,17 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
     }
 
     return expiredVehicles.length > 0;
-  };
+  }, []);
 
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/vehicles');
+      const response = await fetch('/api/vehicles', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       if (!response.ok) {
         throw new Error('Failed loading vehicles list');
       }
@@ -62,7 +67,11 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
       const hasExpired = await checkAndUpdateExpiredVehicles(data);
       
       if (hasExpired) {
-        const refreshResponse = await fetch('/api/vehicles');
+        const refreshResponse = await fetch('/api/vehicles', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
         const refreshedData = await refreshResponse.json();
         setVehicles(refreshedData);
       } else {
@@ -73,11 +82,11 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [checkAndUpdateExpiredVehicles]);
 
   useEffect(() => {
     fetchVehicles();
-  }, []);
+  }, [fetchVehicles]);
 
   // deeplink z dashboardu
   useEffect(() => {
@@ -116,6 +125,7 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(updateData),
       });
@@ -140,6 +150,9 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
     try {
       const response = await fetch(`/api/vehicles/${vehicleId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
       });
 
       if (!response.ok) {
@@ -276,7 +289,7 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
           <div className="p-6 border bg-gradient-to-br from-slate-800/80 to-slate-700/50 backdrop-blur-sm rounded-3xl border-slate-600/30">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-3xl text-yellow-400 drop-shadow-lg"><FaTaxi /></span>
-              <h1 className="text-3xl font-extrabold text-white tracking-tight">Zarządzanie flotą</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white">Zarządzanie flotą</h1>
             </div>
             <p className="mt-1 text-base text-slate-300">Dodawaj, edytuj i usuwaj pojazdy z floty taksówek</p>
           </div>
@@ -284,7 +297,7 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
             
             <button
               onClick={() => setIsFormVisible(true)}
-              className="inline-flex items-center gap-2 px-5 py-2 font-semibold rounded-3xl bg-gradient-to-r from-sky-700/60 to-indigo-700/60 hover:from-sky-600/70 hover:to-indigo-600/70 text-white shadow-lg transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2 font-semibold text-white transition-all shadow-lg rounded-3xl bg-gradient-to-r from-sky-700/60 to-indigo-700/60 hover:from-sky-600/70 hover:to-indigo-600/70"
             >
               <FaPlus className="text-lg" />
               Dodaj Nowy Pojazd
@@ -378,6 +391,7 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
             <AddVehicleForm
               onVehicleAdded={handleVehicleAdded}
               onCancel={() => setIsFormVisible(false)}
+              currentUser={user}
             />
           </div>
         </div>
@@ -404,7 +418,7 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
 }
 
 /* ------------------------------------------------------------ Dodawanie ---------------------------------------- */
-function AddVehicleForm({ onVehicleAdded, onCancel }) {
+function AddVehicleForm({ onVehicleAdded, onCancel}) {
   const [newData, setNewData] = useState({
     brand: '',
     model: '',
@@ -436,7 +450,10 @@ function AddVehicleForm({ onVehicleAdded, onCancel }) {
     try {
       const response = await fetch('/api/vehicles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({
           ...newData,
           productionYear: parseInt(newData.productionYear, 10),

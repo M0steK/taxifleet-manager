@@ -212,12 +212,13 @@ function DriverDashboard({ user, onLogout, navigateTo }) {
     const fetchData = async () => {
       try {
         if (!user?.id) throw new Error('Brak identyfikatora użytkownika');
-        const res = await fetch(`/api/driver/${user.id}/dashboard`);
+        const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}`,};
+        const res = await fetch(`/api/driver/${user.id}/dashboard`, { headers });
         if (!res.ok) throw new Error('Błąd pobierania danych dashboardu kierowcy');
         const json = await res.json();
         setData(json);
 
-        const statsRes = await fetch(`/api/driver/${user.id}/weekly-pickups?range=last-week`);
+        const statsRes = await fetch(`/api/driver/${user.id}/weekly-pickups?range=last-week`, { headers });
         if (statsRes.ok) {
           const statsJson = await statsRes.json();
           setWeeklyPickups(statsJson.weekly ?? null);

@@ -1,7 +1,10 @@
 import express from 'express';
 import prisma from '../config/database.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticateUser);
 
 router.post('/', async (req, res) => {
   try {
@@ -33,7 +36,7 @@ router.post('/', async (req, res) => {
     const insDate = new Date(insuranceExpiry);
     const inspDate = new Date(nextInspectionDate);
     const now = new Date();
-    const autoStatus = (insDate >= now && inspDate >= now) ? 'active' : status;
+    const autoStatus = insDate >= now && inspDate >= now ? 'active' : status;
 
     const newVehicle = await prisma.vehicle.create({
       data: {
@@ -46,6 +49,7 @@ router.post('/', async (req, res) => {
         mileage,
         insuranceExpiry: insDate,
         nextInspectionDate: inspDate,
+        companyId: req.user.companyId,
       },
     });
 
@@ -68,6 +72,9 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const vehicles = await prisma.vehicle.findMany({
+      where: {
+        companyId: req.user.companyId,
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -83,9 +90,10 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const vehicle = await prisma.vehicle.findUnique({
+    const vehicle = await prisma.vehicle.findFirst({
       where: {
         id: id,
+        companyId: req.user.companyId,
       },
     });
 
@@ -113,11 +121,15 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Vehicle not found' });
     }
 
-    const finalInsurance = insuranceExpiry ? new Date(insuranceExpiry) : existing.insuranceExpiry;
-    const finalInspection = nextInspectionDate ? new Date(nextInspectionDate) : existing.nextInspectionDate;
+    const finalInsurance = insuranceExpiry
+      ? new Date(insuranceExpiry)
+      : existing.insuranceExpiry;
+    const finalInspection = nextInspectionDate
+      ? new Date(nextInspectionDate)
+      : existing.nextInspectionDate;
     const now = new Date();
     const docsValid = finalInsurance >= now && finalInspection >= now;
-    const finalStatus = docsValid ? 'active' : (status || existing.status);
+    const finalStatus = docsValid ? 'active' : status || existing.status;
 
     const updatedVehicle = await prisma.vehicle.update({
       where: { id },

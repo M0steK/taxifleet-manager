@@ -1,24 +1,31 @@
 import express from 'express';
 import prisma from '../config/database.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticateUser);
 
 router.get('/weekly-pickups', async (req, res) => {
   try {
     const now = new Date();
-    
+    const companyId = req.user.companyId;
+
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const dayOfWeek = today.getDay(); 
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const lastMonday = new Date(today);
-    lastMonday.setDate(today.getDate() - daysToMonday - 7); 
-    
+    lastMonday.setDate(today.getDate() - daysToMonday - 7);
+
     const lastSunday = new Date(lastMonday);
     lastSunday.setDate(lastMonday.getDate() + 6);
     lastSunday.setHours(23, 59, 59, 999);
 
     const pickups = await prisma.pickupLocation.findMany({
       where: {
+        user: {
+          companyId,
+        },
         pickupTimestamp: {
           gte: lastMonday,
           lte: lastSunday,
@@ -30,8 +37,8 @@ router.get('/weekly-pickups', async (req, res) => {
     });
 
     const weekly = [0, 0, 0, 0, 0, 0, 0];
-    pickups.forEach(pickup => {
-      const day = pickup.pickupTimestamp.getDay(); 
+    pickups.forEach((pickup) => {
+      const day = pickup.pickupTimestamp.getDay();
       const index = day === 0 ? 6 : day - 1;
       weekly[index]++;
     });
@@ -46,19 +53,23 @@ router.get('/weekly-pickups', async (req, res) => {
 router.get('/top-drivers', async (req, res) => {
   try {
     const now = new Date();
-    
+    const companyId = req.user.companyId;
+
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const dayOfWeek = today.getDay(); 
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; 
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const lastMonday = new Date(today);
-    lastMonday.setDate(today.getDate() - daysToMonday - 7); 
-    
+    lastMonday.setDate(today.getDate() - daysToMonday - 7);
+
     const lastSunday = new Date(lastMonday);
     lastSunday.setDate(lastMonday.getDate() + 6);
     lastSunday.setHours(23, 59, 59, 999);
 
     const pickups = await prisma.pickupLocation.findMany({
       where: {
+        user: {
+          companyId,
+        },
         pickupTimestamp: {
           gte: lastMonday,
           lte: lastSunday,
@@ -76,7 +87,7 @@ router.get('/top-drivers', async (req, res) => {
     });
 
     const driverCounts = {};
-    pickups.forEach(pickup => {
+    pickups.forEach((pickup) => {
       const driverId = pickup.userId;
       if (!driverCounts[driverId]) {
         driverCounts[driverId] = {

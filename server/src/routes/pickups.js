@@ -1,7 +1,10 @@
 import express from 'express';
 import prisma from '../config/database.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticateUser);
 
 router.post('/', async (req, res) => {
   try {
@@ -9,6 +12,16 @@ router.post('/', async (req, res) => {
 
     if (!userId || !latitude || !longitude) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // sprawdzenie czy nalezy do firmy
+    const user = await prisma.user.findFirst({
+      where: { id: userId, companyId: req.user.companyId },
+    });
+    if (!user) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid user or not in your company' });
     }
 
     const newPickup = await prisma.pickupLocation.create({
@@ -37,6 +50,11 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const pickups = await prisma.pickupLocation.findMany({
+      where: {
+        user: {
+          companyId: req.user.companyId,
+        },
+      },
       orderBy: {
         pickupTimestamp: 'desc',
       },
@@ -80,13 +98,13 @@ router.get('/recommendations', async (req, res) => {
     `;
 
     // formatowanie odpowiedzi
-    const formattedPickups = pickups.map(p => ({
+    const formattedPickups = pickups.map((p) => ({
       id: p.id,
       userId: p.user_id,
       latitude: p.latitude,
       longitude: p.longitude,
       pickupTimestamp: p.pickup_timestamp,
-      createdAt: p.created_at
+      createdAt: p.created_at,
     }));
 
     res.status(200).json(formattedPickups);

@@ -58,6 +58,13 @@ export default function DriverShiftSignup({ user }) {
 
   const fetchAvailability = useCallback(async () => {
     if (!user) return;
+
+    const token = localStorage.getItem('token');
+    if(!token){
+      setError("Brak tokena autoryzacji. Zaloguj się ponownie.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -65,7 +72,9 @@ export default function DriverShiftSignup({ user }) {
       const monday = getMonday(today);
       monday.setDate(monday.getDate() + weekOffset * 7);
       const weekStart = formatLocalDate(monday);
-      const res = await fetch(`/api/driver/${user.id}/week-availability?weekStart=${weekStart}`);
+      const res = await fetch(`/api/driver/${user.id}/week-availability?weekStart=${weekStart}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
       if (!res.ok) {
         throw new Error('Nie udało się pobrać dostępności zmian');
       }
@@ -152,7 +161,10 @@ export default function DriverShiftSignup({ user }) {
     try {
       const res = await fetch(`/api/driver/${user.id}/week-signup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({ assignments: selectedAssignments }),
       });
       if (!res.ok) {

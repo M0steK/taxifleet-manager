@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
-import { FaUserCog, FaUserPlus, FaEdit } from 'react-icons/fa';
+import { FaUserCog, FaUserPlus, FaEdit, FaCopy, FaCheck } from 'react-icons/fa';
 
 /* ------------------------------- Main -----------------------------*/
 function UserManagment({ user, onLogout, navigateTo }) {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('active');
 
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -14,12 +15,17 @@ function UserManagment({ user, onLogout, navigateTo }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editError, setEditError] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const fetchUsers = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/users');
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       if (!response.ok) {
         throw new Error('Failed loading users list');
       }
@@ -59,6 +65,7 @@ function UserManagment({ user, onLogout, navigateTo }) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(updateData),
       });
@@ -76,6 +83,45 @@ function UserManagment({ user, onLogout, navigateTo }) {
     }
   };
 
+  const handleApproveUser = async (userId) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ status: 'active' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Nie udało się zatwierdzić użytkownika');
+      }
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleRejectUser = async (userId) => {
+    if (!window.confirm('Czy na pewno chcesz odrzucić tego użytkownika? Spowoduje to trwałe usunięcie konta.')) return;
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Nie udało się odrzucić (usunąć) użytkownika');
+      }
+      fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const handleDeleteUser = async (userId) => {
     setIsDeleting(true);
     setEditError(false);
@@ -83,6 +129,9 @@ function UserManagment({ user, onLogout, navigateTo }) {
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
       });
 
       if (!response.ok) {
@@ -107,10 +156,16 @@ function UserManagment({ user, onLogout, navigateTo }) {
   };
 
   const renderTableContent = () => {
+    const filteredUsers = users.filter(u => {
+      if (activeTab === 'active') return u.status === 'active';
+      if (activeTab === 'pending') return u.status === 'pending';
+      return false;
+    });
+
     if (isLoading) {
       return (
         <tr>
-          <td colSpan="6" className="p-3 text-center text-slate-300">
+          <td colSpan="7" className="p-3 text-center text-slate-300">
             Ładowanie użytkowników...
           </td>
         </tr>
@@ -119,23 +174,23 @@ function UserManagment({ user, onLogout, navigateTo }) {
     if (error) {
       return (
         <tr>
-          <td colSpan="6" className="p-3 text-center text-red-400">
+          <td colSpan="7" className="p-3 text-center text-red-400">
             Błąd: {error}
           </td>
         </tr>
       );
     }
-    if (users.length === 0) {
+    if (filteredUsers.length === 0) {
       return (
         <tr>
-          <td colSpan="6" className="p-3 text-center text-slate-300">
-            Brak użytkowników do wyświetlenia
+          <td colSpan="7" className="p-3 text-center text-slate-300">
+            Brak użytkowników w tej kategorii
           </td>
         </tr>
       );
     }
 
-    return users.map((user) => (
+    return filteredUsers.map((user) => (
       <tr key={user.id} className="hover:bg-slate-700/20 transition-colors">
         <td className="p-3 text-center text-slate-200">{user.firstName}</td>
         <td className="p-3 text-center text-slate-200">{user.lastName}</td>
@@ -143,13 +198,33 @@ function UserManagment({ user, onLogout, navigateTo }) {
         <td className="p-3 text-center text-slate-200">{user.phoneNumber?.toLocaleString() || '-'}</td>
         <td className="p-3 text-center text-slate-200">{formatRole(user.role)}</td>
         <td className="p-3 text-center">
-          <button
-            onClick={() => handleEditClick(user)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-700/50 to-indigo-700/50 px-4 py-2 text-sm font-semibold text-white hover:from-sky-600/70 hover:to-indigo-600/70 hover:shadow-lg transition-all"
-          >
-            <FaEdit className="text-sm" />
-            Edytuj
-          </button>
+          <div className="flex justify-center gap-2">
+            {user.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => handleApproveUser(user.id)}
+                  className="inline-flex items-center justify-center px-3 py-1 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700"
+                  title="Zatwierdź"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={() => handleRejectUser(user.id)}
+                  className="inline-flex items-center justify-center px-3 py-1 text-xs font-semibold text-white bg-red-600 rounded hover:bg-red-700"
+                  title="Odrzuć"
+                >
+                  ✕
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => handleEditClick(user)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-700/50 to-indigo-700/50 px-4 py-2 text-sm font-semibold text-white hover:from-sky-600/70 hover:to-indigo-600/70 hover:shadow-lg transition-all"
+            >
+              <FaEdit className="text-sm" />
+              Edytuj
+            </button>
+          </div>
         </td>
       </tr>
     ));
@@ -167,7 +242,26 @@ function UserManagment({ user, onLogout, navigateTo }) {
             </div>
             <p className="mt-1 text-base text-slate-300">Dodawaj, edytuj i usuwaj użytkowników w systemie floty</p>
           </div>
-          <div className="flex items-center justify-end p-6 border bg-gradient-to-br from-blue-900/40 to-indigo-800/30 backdrop-blur-sm rounded-3xl border-indigo-700/30">
+          <div className="flex items-center justify-end p-6 border bg-gradient-to-br from-blue-900/40 to-indigo-800/30 backdrop-blur-sm rounded-3xl border-indigo-700/30 gap-4">
+            {user.company?.joinCode && (
+              <div className="p-3 bg-indigo-900/30 rounded-lg border border-indigo-500/30 inline-flex items-center gap-3">
+                <div>
+                  <span className="text-slate-300 text-sm">Kod dołączenia dla kierowców: </span>
+                  <span className="text-white font-mono font-bold text-lg ml-2 tracking-wider">{user.company.joinCode}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(user.company.joinCode);
+                    setCopySuccess(true);
+                    setTimeout(() => setCopySuccess(false), 2000);
+                  }}
+                  className="p-2 text-slate-400 hover:text-white transition-colors rounded-md hover:bg-white/10"
+                  title="Skopiuj kod"
+                >
+                  {copySuccess ? <FaCheck className="text-green-400" /> : <FaCopy />}
+                </button>
+              </div>
+            )}
             <button
               onClick={() => setIsFormVisible(true)}
               className="inline-flex items-center gap-2 px-5 py-2 font-semibold rounded-3xl bg-gradient-to-r from-sky-700/60 to-indigo-700/60 hover:from-sky-600/70 hover:to-indigo-600/70 text-white shadow-lg transition-all"
@@ -179,10 +273,38 @@ function UserManagment({ user, onLogout, navigateTo }) {
         </div>
 
         <div className="flow-root mt-4">
+          <div className="flex space-x-4 mb-4 border-b border-slate-700">
+            <button
+              className={`pb-2 px-4 font-medium transition-colors ${
+                activeTab === 'active'
+                  ? 'text-sky-400 border-b-2 border-sky-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              onClick={() => setActiveTab('active')}
+            >
+              Aktywni Użytkownicy
+            </button>
+            <button
+              className={`pb-2 px-4 font-medium transition-colors ${
+                activeTab === 'pending'
+                  ? 'text-sky-400 border-b-2 border-sky-400'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              onClick={() => setActiveTab('pending')}
+            >
+              Oczekujący
+              {users.filter(u => u.status === 'pending').length > 0 && (
+                <span className="ml-2 bg-yellow-600 text-white text-xs px-2 py-0.5 rounded-full">
+                  {users.filter(u => u.status === 'pending').length}
+                </span>
+              )}
+            </button>
+          </div>
+
           <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
               <div className="overflow-hidden border shadow rounded-3xl bg-gradient-to-br from-slate-800/70 to-slate-700/50 backdrop-blur-sm border-slate-600/30">
-                <table className="min-w-full divide-y divide-slate-700">
+                                <table className="min-w-full divide-y divide-slate-700">
                       <thead className="bg-slate-700/30">
                         <tr>
                           <th
@@ -223,7 +345,7 @@ function UserManagment({ user, onLogout, navigateTo }) {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-700 bg-slate-800/30">
+                      <tbody className="divide-y divide-slate-700 bg-transparent">
                         {renderTableContent()}
                       </tbody>
                     </table>
@@ -237,7 +359,7 @@ function UserManagment({ user, onLogout, navigateTo }) {
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={() => setIsFormVisible(false)} />
             <div className="relative z-10 w-full max-w-3xl p-4">
-              <AddUserForm onUserAdded={handleUserAdded} onCancel={() => setIsFormVisible(false)} />
+              <AddUserForm onUserAdded={handleUserAdded} onCancel={() => setIsFormVisible(false)} currentUser={user} />
             </div>
           </div>
         )}
@@ -292,7 +414,10 @@ function AddUserForm({ onUserAdded, onCancel }) {
     try {
       const response = await fetch('/api/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify(newData),
       });
 

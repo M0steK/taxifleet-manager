@@ -1,8 +1,11 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import prisma from '../config/database.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticateUser);
 
 router.post('/', async (req, res) => {
   try {
@@ -11,6 +14,23 @@ router.post('/', async (req, res) => {
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Niepoprawny email' });
+    }
+
+    if (password.length < 7) {
+      return res
+        .status(400)
+        .json({ error: 'Hasło musi mieć co najmniej 7 znaków' });
+    }
+
+    if (phoneNumber && String(phoneNumber).replace(/\D/g, '').length < 9) {
+      return res
+        .status(400)
+        .json({ error: 'Numer telefonu musi zawierać co najmniej 9 cyfr' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -22,6 +42,8 @@ router.post('/', async (req, res) => {
         passwordHash: hashedPassword,
         phoneNumber: phoneNumber,
         role: role,
+        companyId: req.user.companyId,
+        status: 'active',
       },
     });
 
@@ -42,6 +64,9 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
+      where: {
+        companyId: req.user.companyId,
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -58,9 +83,10 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: {
         id: id,
+        companyId: req.user.companyId,
       },
     });
 
@@ -80,7 +106,16 @@ router.get('/:id', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, phoneNumber, role } = req.body;
+    const { firstName, lastName, email, phoneNumber, role, status } = req.body;
+
+    // upewnienie sie ze nalezy do firmy
+    const existingUser = await prisma.user.findFirst({
+      where: { id, companyId: req.user.companyId },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     const updatedUser = await prisma.user.update({
       where: {
@@ -93,12 +128,10 @@ router.patch('/:id', async (req, res) => {
         email,
         phoneNumber,
         role,
+        status,
       },
     });
 
-    if (!updatedUser) {
-      return res.status(404).json({ error: 'User not found' });
-    }
     delete updatedUser.passwordHash;
 
     res.status(200).json(updatedUser);
@@ -111,6 +144,15 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // upewnienie sie ze nalezy do firmy
+    const existingUser = await prisma.user.findFirst({
+      where: { id, companyId: req.user.companyId },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     await prisma.user.delete({
       where: {

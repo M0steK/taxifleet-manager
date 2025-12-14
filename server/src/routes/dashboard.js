@@ -1,33 +1,45 @@
 import express from 'express';
 import prisma from '../config/database.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticateUser);
 
 router.get('/stats', async (req, res) => {
   try {
     const now = new Date();
-    
-    const totalVehicles = await prisma.vehicle.count();
-    
+    const companyId = req.user.companyId;
+
+    const totalVehicles = await prisma.vehicle.count({
+      where: { companyId },
+    });
+
     const activeSchedules = await prisma.schedule.findMany({
       where: {
+        user: {
+          companyId,
+        },
         startTime: { lte: now },
         endTime: { gte: now },
       },
-      select: { 
+      select: {
         vehicleId: true,
         userId: true,
       },
     });
 
-    const vehicleIdsOnRoad = new Set(activeSchedules.map(s => s.vehicleId));
-    const driverIdsOnShift = new Set(activeSchedules.map(s => s.userId));
-    
+    const vehicleIdsOnRoad = new Set(activeSchedules.map((s) => s.vehicleId));
+    const driverIdsOnShift = new Set(activeSchedules.map((s) => s.userId));
+
     const vehiclesOnRoadCount = vehicleIdsOnRoad.size;
     const availableVehicles = totalVehicles - vehiclesOnRoadCount;
 
     const totalDrivers = await prisma.user.count({
-      where: { role: 'driver' },
+      where: {
+        companyId,
+        role: 'driver',
+      },
     });
     const availableDrivers = totalDrivers - driverIdsOnShift.size;
 
@@ -37,6 +49,7 @@ router.get('/stats', async (req, res) => {
 
     const upcomingMaintenance = await prisma.vehicle.findMany({
       where: {
+        companyId,
         OR: [
           {
             nextInspectionDate: {

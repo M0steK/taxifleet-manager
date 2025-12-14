@@ -73,9 +73,9 @@ export default function ScheduleManagement({user, onLogout, navigateTo}) {
         try {
             //use Promise.all to fetch data in the same time
             const [schedulesRes, usersRes, vehiclesRes] = await Promise.all([
-            fetch('/api/schedules'),
-            fetch('api/users'),
-            fetch('api/vehicles'),
+            fetch('/api/schedules', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`} }),
+            fetch('/api/users', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
+            fetch('/api/vehicles', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
             ]);
     
             const vehiclesData = await vehiclesRes.json();
@@ -92,7 +92,7 @@ export default function ScheduleManagement({user, onLogout, navigateTo}) {
         }
         }
         fetchAllData();
-    }, []);
+    }, [user.id]);
     
     const prevMonth = () => {
         setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -338,13 +338,16 @@ export default function ScheduleManagement({user, onLogout, navigateTo}) {
                 editingSchedule ? `/api/schedules/${editingSchedule.id}` :'/api/schedules',
                 {
                     method: editingSchedule ? 'PATCH' : 'POST',
-                    headers: { 'Content-Type' : 'application/json'},
+                    headers: { 
+                        'Content-Type' : 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    },
                     body: JSON.stringify(payload),
                 }
             );
             if(!res.ok) throw new Error('Błąd podczas zapisu zmiany');
             //odwiez dane
-            const fresh = await fetch('/api/schedules');
+            const fresh = await fetch('/api/schedules', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`,} });
             const data = await fresh.json();
             setSchedules(data || []);
             setIsFormOpen(false);
@@ -383,9 +386,12 @@ export default function ScheduleManagement({user, onLogout, navigateTo}) {
 
     async function deleteSchedule(id){
         try{
-            const res = await fetch(`/api/schedules/${id}`, {method: 'DELETE'});
+            const res = await fetch(`/api/schedules/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`,}
+            });
             if(res.status !== 204 && !res.ok) throw new Error('Błąd usuwania');
-            const fresh = await fetch('/api/schedules');
+            const fresh = await fetch('/api/schedules', { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`,} });
             const data = await fresh.json();
             setSchedules(data || []);
             setDeleteTarget(null);

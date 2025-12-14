@@ -110,12 +110,15 @@ function Dashboard({ user, onLogout, navigateTo }) {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        const headers = { 
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,  
+        };
         const [statsResponse, allSchedulesResponse, vehiclesResponse, weeklyResponse, topDriversResponse] = await Promise.all([
-          fetch('/api/dashboard/stats'),
-          fetch('/api/schedules'),
-          fetch('/api/vehicles'),
-          fetch('/api/admin/weekly-pickups'),
-          fetch('/api/admin/top-drivers'),
+          fetch('/api/dashboard/stats', { headers }),
+          fetch('/api/schedules', { headers }),
+          fetch('/api/vehicles', { headers }),
+          fetch('/api/admin/weekly-pickups', { headers }),
+          fetch('/api/admin/top-drivers', { headers }),
         ]);
 
         if (!statsResponse.ok || !allSchedulesResponse.ok || !vehiclesResponse.ok) {
@@ -147,7 +150,7 @@ function Dashboard({ user, onLogout, navigateTo }) {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [user.id]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);

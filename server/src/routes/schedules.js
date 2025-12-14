@@ -1,7 +1,10 @@
 import express from 'express';
 import prisma from '../config/database.js';
+import { authenticateUser } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticateUser);
 
 router.post('/', async (req, res) => {
   try {
@@ -11,6 +14,26 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // weryfikacja czy uzytkownik i pojazd naleza do tej samej firmy
+    const targetUser = await prisma.user.findFirst({
+      where: { id: userId, companyId: req.user.companyId },
+    });
+    if (!targetUser) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid user or not in your company' });
+    }
+
+    const targetVehicle = await prisma.vehicle.findFirst({
+      where: { id: vehicleId, companyId: req.user.companyId },
+      select: { status: true, insuranceExpiry: true, nextInspectionDate: true },
+    });
+    if (!targetVehicle) {
+      return res
+        .status(404)
+        .json({ error: 'Vehicle not found or not in your company' });
+    }
+
     const start = new Date(startTime);
     const end = new Date(endTime);
 
@@ -18,18 +41,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Start must be before end' });
     }
 
-    const vehicle = await prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { status: true, insuranceExpiry: true, nextInspectionDate: true },
-    });
-    if (!vehicle) {
-      return res.status(404).json({ error: 'Vehicle not found' });
+    if (targetVehicle.status !== 'active') {
+      return res.status(400).json({ error: 'Pojazd nieaktywny' });
     }
-    if (vehicle.status !== 'active') {
-      return res.status(400).json({ error: 'Vehicle not active' });
-    }
-    if (vehicle.insuranceExpiry < end || vehicle.nextInspectionDate < end) {
-      return res.status(400).json({ error: 'Vehicle documents invalid for entire shift period' });
+    if (
+      targetVehicle.insuranceExpiry < end ||
+      targetVehicle.nextInspectionDate < end
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'Vehicle documents invalid for entire shift period' });
     }
 
     const newSchedule = await prisma.schedule.create({
@@ -57,6 +78,11 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const schedules = await prisma.schedule.findMany({
+      where: {
+        user: {
+          companyId: req.user.companyId,
+        },
+      },
       orderBy: {
         startTime: 'desc',
       },
@@ -90,7 +116,7 @@ router.get('/today', async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -194,7 +220,11 @@ router.patch('/:id', async (req, res) => {
     if (data.vehicleId || data.startTime || data.endTime) {
       const vehicle = await prisma.vehicle.findUnique({
         where: { id: effectiveVehicleId },
-        select: { status: true, insuranceExpiry: true, nextInspectionDate: true },
+        select: {
+          status: true,
+          insuranceExpiry: true,
+          nextInspectionDate: true,
+        },
       });
       if (!vehicle) {
         return res.status(404).json({ error: 'Vehicle not found' });
@@ -202,8 +232,13 @@ router.patch('/:id', async (req, res) => {
       if (vehicle.status !== 'active') {
         return res.status(400).json({ error: 'Vehicle not active' });
       }
-      if (vehicle.insuranceExpiry < effectiveEnd || vehicle.nextInspectionDate < effectiveEnd) {
-        return res.status(400).json({ error: 'Vehicle documents invalid for entire shift period' });
+      if (
+        vehicle.insuranceExpiry < effectiveEnd ||
+        vehicle.nextInspectionDate < effectiveEnd
+      ) {
+        return res
+          .status(400)
+          .json({ error: 'Vehicle documents invalid for entire shift period' });
       }
     }
 

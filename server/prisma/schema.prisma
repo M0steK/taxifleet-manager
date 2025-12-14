@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -18,6 +19,23 @@ enum Role{
   driver
 }
 
+enum UserStatus {
+  active
+  pending
+  rejected
+}
+
+model Company {
+  id String @id @default(uuid())
+  name String
+  joinCode String @unique @map("join_code")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users User[]
+  vehicles Vehicle[]
+}
+
 model User{
   id String @id @default(uuid())
   firstName String @map("first_name")
@@ -26,9 +44,12 @@ model User{
   passwordHash String @map("password_hash")
   phoneNumber String? @map("phone_number")
   role Role @default(driver)
+  status UserStatus @default(active)
+  companyId String? @map("company_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  company Company? @relation(fields: [companyId], references: [id])
   schedules Schedule[]
   pickupLocations PickupLocation[]
 }
@@ -50,9 +71,11 @@ model Vehicle{
   mileage Int
   insuranceExpiry DateTime @map("insurance_expiry")
   nextInspectionDate DateTime @map("next_inspection_date")
+  companyId String? @map("company_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   
+  company Company? @relation(fields: [companyId], references: [id])
   schedules Schedule[]
 }
 

@@ -24,13 +24,14 @@ services:
       - "3001:3001"
     depends_on:
       - db
+    env_file:
+      - ./server/.env
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/taxifleetdb
       - TEST_DATABASE_URL=postgresql://user:password@db:5432/taxifleetdb_test
       - PORT=3001
     volumes:
       - ./server:/app
-      - /app/node_modules
 
 volumes:
   postgres_data:

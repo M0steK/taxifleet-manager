@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
 import Dashboard from './components/Dashboard';
 import DriverDashboard from './components/DriverDashboard';
 import VehicleManagment from './components/VehicleManagment';
@@ -33,7 +34,8 @@ function App() {
 
   return (
     <div className="min-h-screen text-white bg-slate-900">
-      {currentPage === 'login' && <LoginPage onLoginSuccess={handleLoginSuccess} />}
+      {currentPage === 'login' && <LoginPage onLoginSuccess={handleLoginSuccess} onNavigateToRegister={() => navigateTo('register')} />}
+      {currentPage === 'register' && <RegisterPage onNavigateToLogin={() => navigateTo('login')} />}
 
       {currentPage === 'dashboard' && (
         user?.role === 'driver' ? (
