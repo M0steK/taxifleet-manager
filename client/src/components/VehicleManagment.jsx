@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import Header from './Header';
 import { FaTaxi, FaPlus, FaEdit } from 'react-icons/fa';
 
 /* ------------------------------- Main -----------------------------*/
@@ -283,7 +282,6 @@ function VehicleManagment({ user, onLogout, navigateTo }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="vehicleManagment" />
       <div className="px-6 py-8 mx-auto max-w-7xl">
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="p-6 border bg-gradient-to-br from-slate-800/80 to-slate-700/50 backdrop-blur-sm rounded-3xl border-slate-600/30">

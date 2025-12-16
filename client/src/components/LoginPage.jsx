@@ -27,6 +27,7 @@ function LoginPage({ onLoginSuccess, onNavigateToRegister }) {
       const {token, user} = data;
 
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
 
       onLoginSuccess(user);
     } catch (err) {

@@ -3,7 +3,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-l
 import 'leaflet.heat';
 import { hexbin } from 'd3-hexbin';
 import { scaleLinear } from 'd3-scale';
-import Header from './Header';
 
 function ChangeMapView({ center }) {
   const map = useMap();
@@ -194,7 +193,6 @@ function DriverMap({ user, onLogout, navigateTo }) {
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="driverMap" />
       
       <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div className="mb-6">

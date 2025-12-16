@@ -3,7 +3,6 @@ import {
   Calendar,
   Wrench,
 } from 'lucide-react';
-import Header from './Header';
 import DayShiftsView from './shared/DayShiftsView';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -97,7 +96,7 @@ function TopDriversRanking({ topDrivers }) {
   );
 }
 
-function Dashboard({ user, onLogout, navigateTo }) {
+function Dashboard({ user, navigateTo }) {
   const [stats, setStats] = useState(null);
   const [allSchedules, setAllSchedules] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -211,8 +210,6 @@ function Dashboard({ user, onLogout, navigateTo }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="dashboard" />
-
       <main className="px-6 py-8 mx-auto max-w-7xl">
         <div className="space-y-6">
           <div className="grid grid-cols-3 gap-6">

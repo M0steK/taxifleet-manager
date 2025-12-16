@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import Header from './Header';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -252,7 +251,6 @@ function DriverDashboard({ user, onLogout, navigateTo }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="dashboard" />
       <main className="px-6 py-8 mx-auto max-w-7xl">
         <div className="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
           <ShiftCard title="Aktualna zmiana" shift={data?.currentShift} />

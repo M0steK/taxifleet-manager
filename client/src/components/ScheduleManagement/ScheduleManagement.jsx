@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import CalendarView from './CalendarView.jsx';
 import DayShifts from './DayShifts.jsx';
 import ShiftDetails from './ShiftDetails.jsx';
-import Header from '../Header';
 
 function formatDateKey(date) {
     const year = date.getFullYear();
@@ -408,7 +407,6 @@ export default function ScheduleManagement({user, onLogout, navigateTo}) {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <Header user={user} onLogout={onLogout} navigateTo={navigateTo} currentPage="scheduleManagement" />
         <div className="p-6">
         {selectedDate ? ( !selectedShift ? (
             <DayShifts
